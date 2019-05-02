@@ -109,7 +109,7 @@ class EpicAnnotator(Gtk.Window):
 
         self.vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self.add(self.vbox)
-        self.vbox.pack_start(self.menu_bar, True, True, 0)
+        self.vbox.pack_start(self.menu_bar, False, False, 0)
         self.vbox.pack_start(self.video_area, True, True, 0)
         self.vbox.pack_start(self.time_label, False, True, 10)
         self.vbox.pack_start(self.slider, False, True, 0)

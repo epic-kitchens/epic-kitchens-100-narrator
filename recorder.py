@@ -10,7 +10,7 @@ import soundfile as sf
 
 
 class Recorder:
-    def __init__(self, channels=[1], device_id=3, window=200, downsample=10, plot_interval_ms=30, set_plot=False):
+    def __init__(self, channels=[1], device_id=0, window=200, downsample=10, plot_interval_ms=30, set_plot=False):
         self.mapping = [c - 1 for c in channels]  # Channel numbers start with 1
         self.q = queue.Queue()
         self.channels = channels
@@ -41,7 +41,7 @@ class Recorder:
 
         self.current_file = sf.SoundFile(filename, mode='w', samplerate=int(self.samplerate),
                                          channels=len(self.channels))
-
+        
     def stop_recording(self):
         self.is_recording = False
         self.current_file.close()
@@ -89,7 +89,7 @@ class Recorder:
         # Fancy indexing with mapping creates a (necessary!) copy:
         self.q.put(indata[::self.downsample, self.mapping])
 
-        if self.is_recording:
+        if self.is_recording and self.current_file is not None:
             self.current_file.buffer_write(indata, dtype='float32')
 
     def start_monitor(self):
@@ -97,10 +97,11 @@ class Recorder:
             plt.show()
 
     @staticmethod
-    def get_devices(self):
+    def get_devices():
         return sd.query_devices()
 
 
 if __name__ == '__main__':
+    print(Recorder.get_devices())
     recorder = Recorder(set_plot=True)
     recorder.start_monitor()
