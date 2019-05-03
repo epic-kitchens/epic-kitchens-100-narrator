@@ -8,7 +8,7 @@ from recorder import Recorder
 from recordings import Recordings
 
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk, GLib
+from gi.repository import Gtk, GLib, Gdk
 from matplotlib.animation import FuncAnimation
 from matplotlib.backends.backend_gtk3agg import (FigureCanvasGTK3Agg as FigureCanvas)
 
@@ -65,7 +65,7 @@ class EpicAnnotator(Gtk.Window):
         self.slider.set_hexpand(True)
         self.slider.set_valign(Gtk.Align.START)
         self.slider.set_draw_value(False)
-        self.slider.add_mark(1, Gtk.PositionType.TOP, ' ')  # ugly empty mark to draw the necessary space from the start
+        self.slider.add_mark(0, Gtk.PositionType.TOP, ' ')  # ugly empty mark to draw the necessary space from the start
 
         # buttons
         self.playback_button = Gtk.Button()
@@ -120,7 +120,7 @@ class EpicAnnotator(Gtk.Window):
         canvas = FigureCanvas(self.monitor_fig)  # a Gtk.DrawingArea
         canvas.set_size_request(100, 50)
         self.monitor_label = Gtk.Label()
-        self.monitor_label.set_markup('<span foreground="white">Microphone level</span>')
+        self.monitor_label.set_markup('<span foreground="black">Microphone level</span>')
         self.vbox.pack_start(self.monitor_label, False, False, 0)
         self.vbox.pack_start(canvas, False, False, 10)
 
@@ -132,6 +132,12 @@ class EpicAnnotator(Gtk.Window):
         self.toggle_media_controls(False)
         self.record_button.set_sensitive(False)
         self.mute_button.set_sensitive(False)
+
+        #self.modify_bg(Gtk.StateType.NORMAL, Gdk.color_parse('white'))
+
+        settings = Gtk.Settings.get_default()
+        #settings.set_property("gtk-theme-name", "Numix")
+        settings.set_property("gtk-application-prefer-dark-theme", False)
 
     def open_file_chooser(self, *args):
         dlg = Gtk.FileChooserDialog("Open video", self, action=Gtk.FileChooserAction.OPEN,
@@ -178,7 +184,7 @@ class EpicAnnotator(Gtk.Window):
         else:
             self.recorder.stop_recording()
             self.record_button.set_image(self.mic_image)
-            self.monitor_label.set_markup('<span foreground="white">Microphone level</span>')
+            self.monitor_label.set_markup('<span foreground="black">Microphone level</span>')
             self.play_video(None)
             self.toggle_media_controls(True)
 
