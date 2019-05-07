@@ -16,17 +16,17 @@ class Recorder:
         self.channels = channels
         self.device_info = sd.query_devices(device_id, 'input')
         self.device_id = device_id
-        self.samplerate = self.device_info['default_samplerate']
+        self.sample_rate = self.device_info['default_samplerate']
         self.downsample = downsample
         self.plot_interval_ms = plot_interval_ms
         self.window = window
-        self.length = int(self.window * self.samplerate / (1000 * self.downsample))
+        self.length = int(self.window * self.sample_rate / (1000 * self.downsample))
         self.window_data = np.zeros((self.length, len(self.channels)))
         self.is_recording = False
         self.current_file = None
 
         self.stream = sd.InputStream(device=self.device_id, channels=max(self.channels),
-                                     samplerate=self.samplerate, callback=self.audio_callback)
+                                     samplerate=self.sample_rate, callback=self.audio_callback)
 
         if set_plot:
             self.monitor_fig, self.ax, self.lines = self.prepare_monitor_fig()
@@ -36,10 +36,22 @@ class Recorder:
             self.monitor_fig = None
             self.monitor_animation = None
 
+    def change_device(self, device_id):
+        self.close_stream()
+        self.device_id = device_id
+        self.stream = sd.InputStream(device=self.device_id, channels=max(self.channels),
+                                     samplerate=self.sample_rate, callback=self.audio_callback)
+
+    def close_stream(self):
+        if self.is_recording:
+            self.stop_recording()
+
+        self.stream.close(ignore_errors=True)
+
     def start_recording(self, filename):
         self.is_recording = True
 
-        self.current_file = sf.SoundFile(filename, mode='w', samplerate=int(self.samplerate),
+        self.current_file = sf.SoundFile(filename, mode='w', samplerate=int(self.sample_rate),
                                          channels=len(self.channels))
         
     def stop_recording(self):
@@ -96,6 +108,11 @@ class Recorder:
         with self.stream:
             plt.show()
 
+    def play_recording(self, rec_path):
+        data, fs = sf.read(rec_path, dtype='float32')
+        sd.play(data, fs, blocking=False)
+        #status = sd.wait()
+
     @staticmethod
     def get_devices():
         return sd.query_devices()
@@ -103,5 +120,5 @@ class Recorder:
 
 if __name__ == '__main__':
     print(Recorder.get_devices())
-    recorder = Recorder(set_plot=True)
-    recorder.start_monitor()
+    #recorder = Recorder(set_plot=True)
+    #recorder.start_monitor()
