@@ -66,7 +66,7 @@ class Recorder:
         ax.axis((0, len(self.window_data), -1, 1))
         ax.set_yticks([0])
         ax.yaxis.grid(True)
-        fig.tight_layout(pad=0)
+        fig.tight_layout(pad=-5)
         ax.axis('off')
         fig.canvas.set_window_title('Epic Annotator Monitor')
 
@@ -119,6 +119,6 @@ class Recorder:
 
 
 if __name__ == '__main__':
-    print(Recorder.get_devices())
+    print(sd.query_devices())
     #recorder = Recorder(set_plot=True)
     #recorder.start_monitor()
