@@ -1,4 +1,5 @@
 import glob
+import math
 import os
 
 
@@ -49,3 +50,13 @@ class Recordings:
 
     def empty(self):
         return not bool(self._recordings)
+
+
+def ms_to_timestamp(millis):
+    seconds = (millis / 1000) % 60
+    minutes = (millis / (1000 * 60)) % 60
+    hours = (millis / (1000 * 60 * 60)) % 24
+
+    sec_frac, _ = math.modf(seconds)
+
+    return '{:02d}:{:02d}:{:02d}.{:03d}'.format(int(hours), int(minutes), int(seconds), int(sec_frac*1000))

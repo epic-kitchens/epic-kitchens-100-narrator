@@ -1,16 +1,19 @@
 name: epic_narrator
 channels:
-  - conda-forge
   - pkgw/label/superseded
+  - conda-forge
   - defaults
 dependencies:
+  - alsa-lib=1.1.5=h14c3975_1000
   - at-spi2-atk=2.18.1=2
   - at-spi2-core=2.18.3=2
   - atk=2.18.0=3
-  - ca-certificates=2019.3.9=hecc5488_0
+  - ca-certificates=2019.1.23=0
   - cairo=1.16.0=ha4e643d_1000
   - cairo-gobject=1.12.18=8
   - certifi=2019.3.9=py36_0
+  - cffi=1.12.3=py36h2e261b9_0
+  - cycler=0.10.0=py_1
   - dbus-client=1.10.10=0
   - fontconfig=2.13.1=he4413a7_1000
   - freetype=2.10.0=he983fc9_0
@@ -22,31 +25,50 @@ dependencies:
   - harfbuzz=1.0.6=3
   - icu=58.2=hf484d3e_1000
   - jpeg=9b=h024ee3a_2
+  - kiwisolver=1.1.0=py36hc9558a2_0
+  - libblas=3.8.0=8_openblas
+  - libcblas=3.8.0=8_openblas
   - libedit=3.1.20181209=hc058e9b_0
   - libffi=3.2.1=hd88cf55_4
   - libgcc-ng=8.2.0=hdf63c60_1
+  - libgfortran-ng=7.3.0=hdf63c60_0
   - libiconv=1.15=h516909a_1005
+  - liblapack=3.8.0=8_openblas
   - libpng=1.6.37=hed695b0_0
   - libstdcxx-ng=8.2.0=hdf63c60_1
   - libtiff=4.0.10=h2733197_2
   - libuuid=2.32.1=h14c3975_1000
   - libxcb=1.13=h14c3975_1002
   - libxml2=2.9.8=h143f9aa_1005
+  - matplotlib=3.0.3=py36_1
+  - matplotlib-base=3.0.3=py36h5f35d83_1
   - modern-xorg-stack=2016.03=1
   - ncurses=6.1=he6710b0_1
-  - openssl=1.1.1b=h14c3975_1
+  - numpy=1.16.3=py36he5ce36f_0
+  - openblas=0.3.6=h6e990d7_1
+  - openssl=1.1.1b=h7b6447c_1
   - pango=1.38.1=2
   - pcre=8.41=hf484d3e_1003
   - pip=19.0.3=py36_0
   - pixman=0.34.0=h14c3975_1003
+  - portaudio=19.6.0=hf484d3e_2
   - pthread-stubs=0.4=h14c3975_1001
   - pycairo=1.18.0=py36h2a1e443_0
+  - pycparser=2.19=py36_1
   - pygobject=3.30.4=py36h762b167_1000
+  - pyparsing=2.4.0=py_0
+  - pyqt=4.11.4=py36_3
   - python=3.6.8=h0371630_0
+  - python-dateutil=2.8.0=py_0
+  - python-sounddevice=0.3.13=py_0
+  - qt=4.8.7=2
   - readline=7.0=h7b6447c_5
   - setuptools=41.0.0=py36_0
+  - sip=4.18=py36_1
+  - six=1.12.0=py36_1000
   - sqlite=3.27.2=h7b6447c_0
-  - tk=8.6.8=hbc83047_0
+  - tk=8.6.9=h84994c4_1001
+  - tornado=6.0.2=py36h516909a_0
   - wheel=0.33.1=py36_0
   - xorg-kbproto=1.0.7=h14c3975_1002
   - xorg-libice=1.0.9=h516909a_1004
@@ -65,6 +87,8 @@ dependencies:
   - pip:
     - pgi==0.0.11.2
     - pygobject-stubs==0.0.2
+    - pysoundfile==0.9.0.post1
     - python-vlc==3.0.6109
+    - soundfile==0.10.2
 prefix: /users/dm15712/miniconda2/envs/epic_narrator
 

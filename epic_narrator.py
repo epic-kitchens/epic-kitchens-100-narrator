@@ -1,35 +1,24 @@
 import os
 import traceback
-
+import argparse
 import vlc
-import math
 import numpy as np
 import matplotlib.pyplot as plt
 import queue
 import gi
 from recorder import Recorder
-from recordings import Recordings
+from recordings import Recordings, ms_to_timestamp
 
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk, GLib, Gdk
+from gi.repository import Gtk, GLib, Gdk, Pango
 from matplotlib.animation import FuncAnimation
 from matplotlib.backends.backend_gtk3agg import (FigureCanvasGTK3Agg as FigureCanvas)
 
 plt.switch_backend('GTK3Agg')  # VERY IMPORTANT, OTHERWISE IT CRASHES
 
 
-def ms_to_timestamp(millis):
-    seconds = (millis / 1000) % 60
-    minutes = (millis / (1000 * 60)) % 60
-    hours = (millis / (1000 * 60 * 60)) % 24
-
-    sec_frac, _ = math.modf(seconds)
-
-    return '{:02d}:{:02d}:{:02d}.{:03d}'.format(int(hours), int(minutes), int(seconds), int(sec_frac*1000))
-
-
 class EpicAnnotator(Gtk.ApplicationWindow):
-    def __init__(self):
+    def __init__(self, mic_device=0):
         Gtk.ApplicationWindow.__init__(self, title='Epic Annotator')
 
         self.video_length_ms = 0
@@ -38,9 +27,11 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         self.video_width = 800
         self.video_height = 600
         self.connect('destroy', Gtk.main_quit)
-        self.recorder = Recorder()
+        self.recorder = Recorder(device_id=mic_device)
         self.recordings = None
         self.video_path = None
+        self.is_video_loaded = False
+        self.annotation_box_map = {}
 
         # menu
         self.file_menu = Gtk.Menu()
@@ -100,6 +91,27 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         self.time_label = Gtk.Label()
         self.update_time_label(0)
 
+        self.speed_time_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+
+        # speed radio buttons
+        speed_item = None
+        self.normal_speed_button = None
+        speeds = [0.50, 0.75, 1, 1.50, 2]
+
+        self.speed_time_box.pack_start(Gtk.Label('Playback speed'), False, False, 10)
+
+        for speed in speeds:
+            speed_item = Gtk.RadioButton('{:0.2f}'.format(speed), group=speed_item)
+            speed_item.connect('clicked', self.speed_selected, speed)
+
+            if speed == 1:
+                speed_item.set_active(True)
+                self.normal_speed_button = speed_item
+
+            self.speed_time_box.pack_start(speed_item, False, False, 0)
+
+        self.speed_time_box.pack_end(self.time_label, False, False, 0)
+
         # button box
         self.button_box = Gtk.ButtonBox()
         self.button_box.pack_start(self.seek_backward_button, False, False, 0)
@@ -116,9 +128,10 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         canvas = FigureCanvas(self.monitor_fig)  # a Gtk.DrawingArea
         canvas.set_size_request(100, 50)
         self.monitor_label = Gtk.Label()
-        self.monitor_label.set_markup('<span foreground="black">Microphone level</span>')
+        self.set_monitor_label(False)
         self.monitor_animation = FuncAnimation(self.monitor_fig, self.update_mic_monitor,
                                                interval=self.recorder.plot_interval_ms, blit=True)
+
         # annotation box
         self.right_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self.annotation_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
@@ -126,21 +139,43 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         self.annotation_scrolled_window.set_border_width(10)
         self.annotation_scrolled_window.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
         self.annotation_scrolled_window.add_with_viewport(self.annotation_box)
-        self.right_box.pack_start(Gtk.Label('Annotations'), False, False, 10)
+        self.right_box.pack_start(Gtk.Label('Recordings'), False, False, 10)
         self.right_box.pack_start(self.annotation_scrolled_window, True, True, 0)
         self.right_box.set_size_request(300, self.video_height)
 
         self.annotation_box.connect('size-allocate', self.scroll_annotations_to_bottom)
 
+        self.video_path_label = Gtk.Label(' ')
+        self.recordings_path_label = Gtk.Label(' ')
+
         # video box
         self.video_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self.video_box.pack_start(self.menu_bar, False, False, 0)
         self.video_box.pack_start(self.video_area, True, True, 0)
-        self.video_box.pack_start(self.time_label, False, False, 10)
+        self.video_box.pack_start(self.speed_time_box, False, False, 10)
         self.video_box.pack_start(self.slider, False, False, 0)
         self.video_box.pack_start(self.button_box, False, False, 20)
         self.video_box.pack_start(self.monitor_label, False, False, 0)
         self.video_box.pack_start(canvas, False, False, 10)
+
+        # bottom paths labels
+        self.paths_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+
+        for path_labels in [self.video_path_label, self.recordings_path_label]:
+            path_labels.set_property('lines', 1)
+            path_labels.set_ellipsize(Pango.EllipsizeMode.START)
+            path_labels.set_property('max-width-chars', 100)
+
+        video_path_placeholder = Gtk.Label()
+        video_path_placeholder.set_markup('<span><b>Annotating video:</b></span>')
+        recordings_path_placeholder = Gtk.Label()
+        recordings_path_placeholder.set_markup('<span><b>Saving recordings to:</b></span>')
+        self.paths_box.pack_start(video_path_placeholder, False, False, 10)
+        self.paths_box.pack_start(self.video_path_label, False, False, 0)
+        self.paths_box.pack_end(self.recordings_path_label, False, False, 0)
+        self.paths_box.pack_end(recordings_path_placeholder, False, False, 10)
+
+        self.video_box.pack_start(self.paths_box, False, False, 10)
 
         self.main_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         self.main_box.pack_start(self.video_box, False, True, 0)
@@ -159,7 +194,13 @@ class EpicAnnotator(Gtk.ApplicationWindow):
 
         self.connect("key-press-event", self.key_pressed)
 
-        self.annotation_box_map = {}
+    def set_monitor_label(self, is_recording):
+        colour = '#ff3300' if is_recording else 'black'
+        self.monitor_label.set_markup('<span foreground="{}">Microphone level</span>'.format(colour))
+
+    def speed_selected(self, widget, speed):
+        if self.is_video_loaded:
+            self.player.set_rate(speed)
 
     def set_focus(self):
         widgets = [self.main_box, self.video_box, self.slider, self.button_box, self.video_box, self.button_box]
@@ -168,12 +209,17 @@ class EpicAnnotator(Gtk.ApplicationWindow):
             w.set_property('can-focus', False)
 
     def key_pressed(self, widget, event):
+        if not self.is_video_loaded:
+            return
+
         if event.keyval == Gdk.KEY_Left:
             self.seek_backwards()
         elif event.keyval == Gdk.KEY_Right:
             self.seek_forwards()
         elif event.keyval == Gdk.KEY_space:
             self.toggle_player_playback()
+        elif event.keyval == Gdk.KEY_M or event.keyval == Gdk.KEY_m:
+            self.toggle_audio()
         elif event.keyval == Gdk.KEY_Return:
             self.toggle_record()
         elif event.keyval == Gdk.KEY_Delete or event.keyval == Gdk.KEY_BackSpace:
@@ -247,12 +293,14 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         rec_player.set_mrl(audio_media.get_mrl())
         rec_player.audio_set_mute(False)
         rec_player.play()
+        rec_player.release()
 
     def delete_recording(self, widget, event, time_ms):
         dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.QUESTION,
                                    (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK, Gtk.ResponseType.OK),
                                     'Confirm delete')
-        dialog.format_secondary_text('Are you sure you want to delete recording at time {}?'.format(ms_to_timestamp(time_ms)))
+        dialog.format_secondary_text('Are you sure you want to delete recording at time {}?'.format(
+            ms_to_timestamp(time_ms)))
         response = dialog.run()
         dialog.destroy()
 
@@ -289,6 +337,10 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         self.annotation_box.remove(widget)
         self.refresh_annotation_box()
 
+    def remove_all_annotation_boxes(self):
+        for w in self.annotation_box.get_children():
+            self.annotation_box.remove(w)
+
     def refresh_annotation_box(self):
         order = sorted(list(self.annotation_box_map.keys()))
 
@@ -297,13 +349,7 @@ class EpicAnnotator(Gtk.ApplicationWindow):
             self.annotation_box.reorder_child(widget, position)
 
     def add_time_tick(self, time_ms, colour=None):
-        if colour is None:
-            colour = '#white'
-            alpha = '0%'
-        else:
-            alpha = '100%'
-
-        self.slider.add_mark(time_ms, Gtk.PositionType.TOP, None)  #'<span foreground="{}">|</span>'.format(colour))
+        self.slider.add_mark(time_ms, Gtk.PositionType.TOP, None)
 
     def add_start_end_slider_ticks(self):
         self.add_time_tick(1)
@@ -311,7 +357,6 @@ class EpicAnnotator(Gtk.ApplicationWindow):
 
     def refresh_recording_ticks(self):
         self.slider.clear_marks()
-        # self.add_start_end_slider_ticks()
 
         for time_ms in self.recordings.get_recordings_times():
             self.add_time_tick(time_ms, colour=self.red_tick_colour)
@@ -350,18 +395,33 @@ class EpicAnnotator(Gtk.ApplicationWindow):
             dialog.destroy()
 
     def choose_video(self, *args):
+        if self.is_video_loaded:
+            confirm_dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.QUESTION,
+                                       (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK, Gtk.ResponseType.OK),
+                                       'Confirm loading another video')
+            confirm_dialog.format_secondary_text('Are you sure you want to load another video?')
+            response = confirm_dialog.run()
+
+            if response != Gtk.ResponseType.OK:
+                confirm_dialog.destroy()
+                return
+
+            confirm_dialog.destroy()
+
         dialog = Gtk.FileChooserDialog("Open video", self, action=Gtk.FileChooserAction.OPEN,
                                     buttons=(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
                                              Gtk.STOCK_OK, Gtk.ResponseType.OK))
-        #file_filter = Gtk.FileFilter()
-        #file_filter.set_name("Video files")
-        #file_filter.add_mime_type("video/")
-        #dialog.add_filter(file_filter)
+
+        file_filter = Gtk.FileFilter()
+        file_filter.set_name("Video files")
+        file_filter.add_mime_type("video/*")
+        dialog.add_filter(file_filter)
+
         response = dialog.run()
 
         if response == Gtk.ResponseType.OK:
             path = dialog.get_filename()
-            self.load_video(path)
+            self.setup(path)
 
         dialog.destroy()
 
@@ -392,7 +452,7 @@ class EpicAnnotator(Gtk.ApplicationWindow):
     def stop_recording(self, play_afterwards=True):
         self.recorder.stop_recording()
         self.record_button.set_image(self.mic_image)
-        self.monitor_label.set_markup('<span foreground="black">Microphone level</span>')
+        self.set_monitor_label(False)
         self.toggle_media_controls(True)
 
         if play_afterwards:
@@ -400,10 +460,12 @@ class EpicAnnotator(Gtk.ApplicationWindow):
 
     def start_recording(self):
         self.record_button.set_image(self.record_image)
-        self.monitor_label.set_markup('<span foreground="#ff3300">Microphone level</span>')
+        self.set_monitor_label(True)
         self.toggle_media_controls(False)
+
         if self.player.is_playing():
             self.pause_video(None)
+
         rec_time = self.player.get_time()
         path = self.recordings.add_recording(rec_time)
         self.recorder.start_recording(path)
@@ -518,9 +580,9 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         return False
 
     def video_ended(self, data):
-        GLib.timeout_add(100, self.reload)  # need to call this with some delay otherwise it gets stuck
+        GLib.timeout_add(100, self.reload_current_video)  # need to call this with some delay otherwise it gets stuck
 
-    def reload(self):
+    def reload_current_video(self):
         self.player.set_media(self.player.get_media())
         self.slider.set_value(1)
         self.pause_video(None)
@@ -538,33 +600,47 @@ class EpicAnnotator(Gtk.ApplicationWindow):
 
     def _realized(self, widget):
         self.setup_vlc_player(widget)
-        # self.load_video('/users/dm15712/Videos/whiskey_lab.mp4')
 
     def choose_output_folder(self, default_output):
         dialog = Gtk.FileChooserDialog("Select output folder", self, action=Gtk.FileChooserAction.SELECT_FOLDER,
                                     buttons=(Gtk.STOCK_OK, Gtk.ResponseType.OK))
 
         dialog.set_current_folder(default_output)
-        response = dialog.run()
+        dialog.run()
         path = dialog.get_filename()
         dialog.destroy()
 
         return path
 
-    def load_video(self, video_path):
+    def set_video_recordings_paths_labels(self):
+        self.video_path_label.set_text(self.video_path)
+        self.recordings_path_label.set_text(self.recordings.video_annotations_folder)
+
+    def setup(self, video_path):
         self.video_path = video_path
         media = self.vlc_instance.media_new_path(self.video_path)
-        self.player.set_mrl(media.get_mrl())
+        asd = self.player.set_mrl(media.get_mrl())
+        print(asd)
+
         self.playback_button.set_image(self.pause_image)
         self.player.audio_set_mute(True)
         self.toggle_media_controls(True)
         self.record_button.set_sensitive(True)
         self.mute_button.set_sensitive(True)
+        self.is_video_loaded = True
 
         output_path = self.choose_output_folder(os.path.join(os.path.expanduser("~")))
+
+        if self.recordings is not None:
+            # reset things
+            self.slider.clear_marks()
+            self.remove_all_annotation_boxes()
+            self.annotation_box_map = {}
+            del self.recordings
+
         self.recordings = Recordings(output_path, self.video_path)
 
-        GLib.timeout_add(50, self.video_loaded)  # we need to play to actualy play the video to get the time
+        GLib.timeout_add(50, self.video_loaded)  # we need to play the video to get the time
 
         if self.recordings.annotations_exist():
             self.recordings.load_annotations()
@@ -573,12 +649,27 @@ class EpicAnnotator(Gtk.ApplicationWindow):
                 self.add_annotation_box(rec_ms)
                 self.add_time_tick(rec_ms, colour=self.red_tick_colour)
 
+        self.normal_speed_button.set_active(True)  # reset normal speed
+        self.set_video_recordings_paths_labels()
         self.play_video()
 
 
 if __name__ == '__main__':
-    FILE_PATH = '/users/dm15712/Videos/whiskey_lab.mp4'
-    annotator = EpicAnnotator()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--query_audio_devices', action='store_true',
+                        help='Print the audio devices available in your system')
+    parser.add_argument('--set_audio_device', type=int, default=0,
+                        help='Set audio device to be used for recording, given the device id. '
+                             'Use `--query_audio_devices` to get the devices available in your system with their '
+                             'corresponding ids')
+
+    args = parser.parse_args()
+
+    if args.query_audio_devices:
+        print(Recorder.get_devices())
+        exit()
+
+    annotator = EpicAnnotator(mic_device=args.set_audio_device)
     annotator.show()
     Gtk.main()
     annotator.player.stop()
