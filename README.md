@@ -17,12 +17,17 @@ Alternatively, you can try to install the necessary modules yourself:
     In Linux this should be available in all distributions. For Windows and MacOS 
     `pip install pysoundfile` should install the library automatically for you. 
 - [pysounddevice](https://pypi.org/project/sounddevice/)
+   - This requires [PortAudio](http://www.portaudio.com/) to be installed in your system. 
+     In Linux this should be available in all distributions. For Windows and MacOS 
+    `pip install sounddevice` should install the library automatically for you.
 - [PyGObject](https://pypi.org/project/PyGObject/)
 - [cffi](https://pypi.org/project/cffi/)
 - [numpy](https://pypi.org/project/numpy/)
 - [matplotlib](https://pypi.org/project/matplotlib/)
 
-Note that the annotator works with Python 3 only.
+Note that the annotator works with Python 3 only. 
+
+**Note also** that [VLC player](https://www.videolan.org/vlc/) must be installed in your system.
 
 ## Usage
 

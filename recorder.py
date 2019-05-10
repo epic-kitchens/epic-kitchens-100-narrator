@@ -108,11 +108,6 @@ class Recorder:
         with self.stream:
             plt.show()
 
-    def play_recording(self, rec_path):
-        data, fs = sf.read(rec_path, dtype='float32')
-        sd.play(data, fs, blocking=False)
-        #status = sd.wait()
-
     @staticmethod
     def get_devices():
         return sd.query_devices()

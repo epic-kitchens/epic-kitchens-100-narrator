@@ -293,7 +293,6 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         rec_player.set_mrl(audio_media.get_mrl())
         rec_player.audio_set_mute(False)
         rec_player.play()
-        rec_player.release()
 
     def delete_recording(self, widget, event, time_ms):
         dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.QUESTION,
@@ -619,8 +618,7 @@ class EpicAnnotator(Gtk.ApplicationWindow):
     def setup(self, video_path):
         self.video_path = video_path
         media = self.vlc_instance.media_new_path(self.video_path)
-        asd = self.player.set_mrl(media.get_mrl())
-        print(asd)
+        self.player.set_mrl(media.get_mrl())
 
         self.playback_button.set_image(self.pause_image)
         self.player.audio_set_mute(True)
