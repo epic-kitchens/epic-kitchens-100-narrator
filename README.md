@@ -21,8 +21,6 @@ Alternatively, you can try to install the necessary modules yourself:
      In Linux this should be available in all distributions. For Windows and MacOS 
     `pip install sounddevice` should install the library automatically for you.
 - [PyGObject](https://pypi.org/project/PyGObject/)
-- [cffi](https://pypi.org/project/cffi/)
-- [numpy](https://pypi.org/project/numpy/)
 - [matplotlib](https://pypi.org/project/matplotlib/)
 
 Note that the annotator works with Python 3 only. 

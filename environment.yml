@@ -1,6 +1,6 @@
 name: epic_narrator
 channels:
-  - pkgw-forge
+  - pkgw/label/superseded # dont' use pkgw-forge otherwise the ui will look broken
   - conda-forge
 dependencies:
   - python=3.6
