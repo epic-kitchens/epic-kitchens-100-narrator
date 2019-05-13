@@ -8,7 +8,7 @@ class Recordings:
         self.base_folder = os.path.join(base_folder, 'epic_annotator_recordings')
         self.video_path = video_path
         self.video_name = os.path.splitext(os.path.basename(self.video_path))[0]
-        self.video_annotations_folder = os.path.join(self.base_folder, os.path.basename(self.video_path))
+        self.video_annotations_folder = os.path.join(self.base_folder, self.video_name)
         self.audio_extension = audio_extension
         self._recordings = {}
         os.makedirs(self.video_annotations_folder, exist_ok=True)

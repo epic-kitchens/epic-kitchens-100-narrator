@@ -218,8 +218,6 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         settings = Gtk.Settings.get_default()
         settings.set_property("gtk-application-prefer-dark-theme", False)
 
-        #self.set_position(Gtk.WindowPosition.MOUSE)
-
         self.connect("key-press-event", self.key_pressed)
 
     def set_monitor_label(self, is_recording):
@@ -639,6 +637,16 @@ class EpicAnnotator(Gtk.ApplicationWindow):
             libgdk.gdk_quartz_window_get_nsview.argtypes = [ctypes.c_void_p]
             handle = libgdk.gdk_quartz_window_get_nsview(gpointer)
             self.player.set_nsobject(int(handle))
+        elif sys.platform.startswith('win'):
+            window = self.video_area.get_property('window')
+            ctypes.pythonapi.PyCapsule_GetPointer.restype = ctypes.c_void_p
+            ctypes.pythonapi.PyCapsule_GetPointer.argtypes = [ctypes.py_object]
+            drawingarea_gpointer = ctypes.pythonapi.PyCapsule_GetPointer(window.__gpointer__, None)
+            gdkdll = ctypes.CDLL("libgdk-3-0.dll")
+            handle = gdkdll.gdk_win32_window_get_handle(drawingarea_gpointer)
+            self.player.set_hwnd(int(handle))
+        else:
+            raise Exception('Cannot deal with this platform: {}'.format(sys.platform))
 
     def setup_vlc_player(self, widget):
         self.vlc_instance = vlc.Instance('--no-xlib')
@@ -665,7 +673,6 @@ class EpicAnnotator(Gtk.ApplicationWindow):
     def set_video_recordings_paths_labels(self):
         self.video_path_label.set_text(self.video_path)
         self.recordings_path_label.set_text(self.recordings.video_annotations_folder)
-
 
     def setup(self, video_path):
         self.video_path = video_path
