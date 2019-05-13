@@ -2,6 +2,9 @@
 
 ## Installation
 
+[VLC player](https://www.videolan.org/vlc/) must be installed in your system, regardless of your OS.
+
+
 ### Linux
 
 Use conda with the provided environment to install the necessary dependencies:
@@ -27,18 +30,20 @@ Alternatively, you can try to install the necessary modules yourself:
 
 Note that the annotator works with Python 3 only. 
 
-**Note also** that [VLC player](https://www.videolan.org/vlc/) must be installed in your system.
-
 ### Mac OS
 
-Use [brew](https://brew.sh/) and pip to install the dependencies. Note that you should use pip3 (i.e. pip for python 3.x)
+Use [brew](https://brew.sh/) and pip to install the dependencies. 
+Note that you should use pip3 (i.e. pip for python 3.x)
+
+**Important:** if you use conda, make sure you run `conda deactivate` before running the commands below 
+(even the `base` environment must be deactivated)
 
 ```bash
 brew install pygobject3 gtk+3 adwaita-icon-theme
-pip3 install matplotlib python-vlc sounddevice soundfile
+python3 -m pip install matplotlib python-vlc sounddevice soundfile
 ```
 
-Bear in mind that the `brew` installation will take a while (around 10-15 minutes)
+Bear in mind that the `brew` installation might take a while.
 
 
 ## Usage

@@ -113,6 +113,7 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         for speed in speeds:
             speed_item = Gtk.RadioButton('{:0.2f}'.format(speed), group=speed_item)
             speed_item.connect('clicked', self.speed_selected, speed)
+            speed_item.set_property('can-focus', False)
 
             if speed == 1:
                 speed_item.set_active(True)
@@ -230,7 +231,8 @@ class EpicAnnotator(Gtk.ApplicationWindow):
             self.player.set_rate(speed)
 
     def set_focus(self):
-        widgets = [self.main_box, self.video_box, self.slider, self.button_box, self.video_box, self.button_box]
+        widgets = [self.main_box, self.video_box, self.slider, self.button_box, self.video_box, self.button_box,
+                   self.speed_time_box]
 
         for w in widgets:
             w.set_property('can-focus', False)
