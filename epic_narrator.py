@@ -232,7 +232,8 @@ class EpicAnnotator(Gtk.ApplicationWindow):
 
     def set_focus(self):
         widgets = [self.main_box, self.video_box, self.slider, self.button_box, self.video_box, self.button_box,
-                   self.speed_time_box]
+                   self.speed_time_box, self.seek_backward_button, self.seek_forward_button, self.playback_button,
+                   self.record_button, self.mute_button]
 
         for w in widgets:
             w.set_property('can-focus', False)
