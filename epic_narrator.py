@@ -1,8 +1,12 @@
 import os
+import sys
+import ctypes
 import traceback
 import argparse
 import vlc
 import numpy as np
+import matplotlib
+matplotlib.use('PS')
 import matplotlib.pyplot as plt
 import queue
 import gi
@@ -14,7 +18,11 @@ from gi.repository import Gtk, GLib, Gdk, Pango
 from matplotlib.animation import FuncAnimation
 from matplotlib.backends.backend_gtk3agg import (FigureCanvasGTK3Agg as FigureCanvas)
 
-plt.switch_backend('GTK3Agg')  # VERY IMPORTANT, OTHERWISE IT CRASHES
+
+if sys.platform.startswith('darwin'):
+    plt.switch_backend('MacOSX')
+else:
+    plt.switch_backend('GTK3Agg')
 
 
 class EpicAnnotator(Gtk.ApplicationWindow):
@@ -24,20 +32,22 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         self.video_length_ms = 0
         self.seek_step = 500  # 500ms
         self.red_tick_colour = "#ff3300"
-        self.video_width = 800
-        self.video_height = 600
+        self.video_width = 600
+        self.video_height = 400
         self.connect('destroy', Gtk.main_quit)
         self.recorder = Recorder(device_id=mic_device)
         self.recordings = None
         self.video_path = None
         self.is_video_loaded = False
         self.annotation_box_map = {}
+        self.single_window = False if sys.platform.startswith('darwin') else True
+        self.annotation_box_height = self.video_height if self.single_window else 200
 
         # menu
         self.file_menu = Gtk.Menu()
-        self.load_video_menu_item = Gtk.MenuItem('Load video')
+        self.load_video_menu_item = Gtk.MenuItem(label='Load video')
         self.file_menu.append(self.load_video_menu_item)
-        self.file_menu_item = Gtk.MenuItem('File')
+        self.file_menu_item = Gtk.MenuItem(label='File')
         self.file_menu_item.set_submenu(self.file_menu)
         self.menu_bar = Gtk.MenuBar()
         self.menu_bar.append(self.file_menu_item)
@@ -83,9 +93,9 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         self.mute_button.connect('clicked', self.toggle_audio)
 
         # video area
-        self.video_area = Gtk.DrawingArea()
+        self.video_area = Gtk.DrawingArea() if self.single_window else Gtk.Window(title='Epic Annotator')
         self.video_area.set_size_request(self.video_width, self.video_height)
-        self.video_area.connect('realize', self._realized)
+        self.video_area.connect('realize', self.video_area_ready)
 
         # time label
         self.time_label = Gtk.Label()
@@ -98,7 +108,7 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         self.normal_speed_button = None
         speeds = [0.50, 0.75, 1, 1.50, 2]
 
-        self.speed_time_box.pack_start(Gtk.Label('Playback speed'), False, False, 10)
+        self.speed_time_box.pack_start(Gtk.Label(label='Playback speed'), False, False, 10)
 
         for speed in speeds:
             speed_item = Gtk.RadioButton('{:0.2f}'.format(speed), group=speed_item)
@@ -141,17 +151,32 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         self.annotation_scrolled_window.add_with_viewport(self.annotation_box)
         self.right_box.pack_start(Gtk.Label('Recordings'), False, False, 10)
         self.right_box.pack_start(self.annotation_scrolled_window, True, True, 0)
-        self.right_box.set_size_request(300, self.video_height)
+        self.right_box.set_size_request(300, self.annotation_box_height)
 
         self.annotation_box.connect('size-allocate', self.scroll_annotations_to_bottom)
 
-        self.video_path_label = Gtk.Label(' ')
-        self.recordings_path_label = Gtk.Label(' ')
+        self.video_path_label = Gtk.Label(label=' ')
+        self.recordings_path_label = Gtk.Label(label=' ')
 
         # video box
         self.video_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self.video_box.pack_start(self.menu_bar, False, False, 0)
-        self.video_box.pack_start(self.video_area, True, True, 0)
+
+        if self.single_window:
+            self.video_box.pack_start(self.video_area, True, True, 0)
+        else:
+            self.video_area.show()
+            self.video_area.move(0, 0)
+            self.move(0, self.video_height+100)
+
+            # enable only horizontal resize
+            gh = Gdk.Geometry()
+            gh.max_height = 300
+            gh.min_height = 300
+            gh.max_width = 2000
+            gh.min_width = 700
+            self.set_geometry_hints(None, gh, Gdk.WindowHints.MAX_SIZE)
+
         self.video_box.pack_start(self.speed_time_box, False, False, 10)
         self.video_box.pack_start(self.slider, False, False, 0)
         self.video_box.pack_start(self.button_box, False, False, 20)
@@ -164,7 +189,7 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         for path_labels in [self.video_path_label, self.recordings_path_label]:
             path_labels.set_property('lines', 1)
             path_labels.set_ellipsize(Pango.EllipsizeMode.START)
-            path_labels.set_property('max-width-chars', 100)
+            path_labels.set_property('max-width-chars', 50)
 
         video_path_placeholder = Gtk.Label()
         video_path_placeholder.set_markup('<span><b>Annotating video:</b></span>')
@@ -191,6 +216,8 @@ class EpicAnnotator(Gtk.ApplicationWindow):
 
         settings = Gtk.Settings.get_default()
         settings.set_property("gtk-application-prefer-dark-theme", False)
+
+        #self.set_position(Gtk.WindowPosition.MOUSE)
 
         self.connect("key-press-event", self.key_pressed)
 
@@ -277,6 +304,7 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         self.annotation_box_map[time_ms] = box
         self.annotation_box.pack_start(box, False, True, 0)
         self.refresh_annotation_box()
+        self.annotation_box.show_all()
 
     def go_to(self, widget, event, time_ms):
         self.slider.set_value(time_ms)
@@ -587,17 +615,31 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         self.pause_video(None)
         return False  # return False so we stop this timer
 
+    def set_vlc_window(self):
+        if sys.platform.startswith('linux'):
+            win_id = self.video_area.get_window().get_xid()
+            self.player.set_xwindow(win_id)
+        elif sys.platform.startswith('darwin'):
+            # ugly bit to get window if on mac os
+            window = self.video_area.get_property('window')
+            ctypes.pythonapi.PyCapsule_GetPointer.restype = ctypes.c_void_p
+            ctypes.pythonapi.PyCapsule_GetPointer.argtypes = [ctypes.py_object]
+            gpointer = ctypes.pythonapi.PyCapsule_GetPointer(window.__gpointer__, None)
+            libgdk = ctypes.CDLL("libgdk-3.dylib")
+            libgdk.gdk_quartz_window_get_nsview.restype = ctypes.c_void_p
+            libgdk.gdk_quartz_window_get_nsview.argtypes = [ctypes.c_void_p]
+            handle = libgdk.gdk_quartz_window_get_nsview(gpointer)
+            self.player.set_nsobject(int(handle))
+
     def setup_vlc_player(self, widget):
         self.vlc_instance = vlc.Instance('--no-xlib')
         self.player = self.vlc_instance.media_player_new()
-        win_id = widget.get_window().get_xid()
-        self.player.set_xwindow(win_id)
-
+        self.set_vlc_window()
         events = self.player.event_manager()
         events.event_attach(vlc.EventType.MediaPlayerPositionChanged, self.video_moving)
         events.event_attach(vlc.EventType.MediaPlayerEndReached, self.video_ended)
 
-    def _realized(self, widget):
+    def video_area_ready(self, widget):
         self.setup_vlc_player(widget)
 
     def choose_output_folder(self, default_output):
@@ -614,6 +656,7 @@ class EpicAnnotator(Gtk.ApplicationWindow):
     def set_video_recordings_paths_labels(self):
         self.video_path_label.set_text(self.video_path)
         self.recordings_path_label.set_text(self.recordings.video_annotations_folder)
+
 
     def setup(self, video_path):
         self.video_path = video_path
