@@ -32,7 +32,7 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         self.video_length_ms = 0
         self.seek_step = 500  # 500ms
         self.red_tick_colour = "#ff3300"
-        self.video_width = 600
+        self.video_width = 680
         self.video_height = 400
         self.connect('destroy', Gtk.main_quit)
         self.recorder = Recorder(device_id=mic_device)
@@ -113,7 +113,7 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         for speed in speeds:
             speed_item = Gtk.RadioButton('{:0.2f}'.format(speed), group=speed_item)
             speed_item.connect('clicked', self.speed_selected, speed)
-            speed_item.set_property('can-focus', False)
+            speed_item.set_can_focus(False)
 
             if speed == 1:
                 speed_item.set_active(True)
@@ -231,16 +231,16 @@ class EpicAnnotator(Gtk.ApplicationWindow):
             self.player.set_rate(speed)
 
     def set_focus(self):
-        widgets = [self.main_box, self.video_box, self.slider, self.button_box, self.video_box, self.button_box,
+        widgets = [self.main_box, self.slider, self.video_box, self.button_box,
                    self.speed_time_box, self.seek_backward_button, self.seek_forward_button, self.playback_button,
-                   self.record_button, self.mute_button]
+                   self.record_button, self.mute_button, self.annotation_box, self]
 
         for w in widgets:
-            w.set_property('can-focus', False)
+            w.set_can_focus(False)
 
     def key_pressed(self, widget, event):
         if not self.is_video_loaded:
-            return
+            return True
 
         if event.keyval == Gdk.KEY_Left:
             self.seek_backwards()
@@ -254,7 +254,7 @@ class EpicAnnotator(Gtk.ApplicationWindow):
             self.toggle_record()
         elif event.keyval == Gdk.KEY_Delete or event.keyval == Gdk.KEY_BackSpace:
             if self.recordings.empty():
-                return
+                pass
 
             if self.player.is_playing():
                 paused = True
@@ -273,7 +273,9 @@ class EpicAnnotator(Gtk.ApplicationWindow):
             if paused:
                 self.play_video()
         else:
-            return
+            pass
+
+        return True
 
     def show(self):
         self.show_all()
@@ -303,6 +305,10 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         box.set_layout(Gtk.ButtonBoxStyle.CENTER)
         box.set_spacing(5)
         box.show_all()
+        box.set_can_focus(False)
+        time_button.set_can_focus(False)
+        a_play_button.set_can_focus(False)
+        a_delete_button.set_can_focus(False)
 
         self.annotation_box_map[time_ms] = box
         self.annotation_box.pack_start(box, False, True, 0)
