@@ -398,7 +398,7 @@ class EpicAnnotator(Gtk.ApplicationWindow):
     def set_microphone_menu(self):
         devices = Recorder.get_devices()
         self.mic_menu = Gtk.Menu()
-        self.mic_menu_item = Gtk.MenuItem('Select microphone')
+        self.mic_menu_item = Gtk.MenuItem(label='Select microphone')
         self.mic_menu_item.set_submenu(self.mic_menu)
 
         mic_item = None
@@ -406,7 +406,7 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         for dev_idx, dev in enumerate(devices):
             dev_name = dev['name']
 
-            mic_item = Gtk.RadioMenuItem(dev_name, group=mic_item)
+            mic_item = Gtk.RadioMenuItem(label=dev_name, group=mic_item)
             mic_item.connect('activate', self.microphone_selected, dev_idx)
 
             if dev_idx == self.recorder.device_id:
