@@ -111,7 +111,7 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         self.speed_time_box.pack_start(Gtk.Label(label='Playback speed'), False, False, 10)
 
         for speed in speeds:
-            speed_item = Gtk.RadioButton('{:0.2f}'.format(speed), group=speed_item)
+            speed_item = Gtk.RadioButton(label='{:0.2f}'.format(speed), group=speed_item)
             speed_item.connect('clicked', self.speed_selected, speed)
             speed_item.set_can_focus(False)
 
@@ -150,7 +150,7 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         self.annotation_scrolled_window.set_border_width(10)
         self.annotation_scrolled_window.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
         self.annotation_scrolled_window.add_with_viewport(self.annotation_box)
-        self.right_box.pack_start(Gtk.Label('Recordings'), False, False, 10)
+        self.right_box.pack_start(Gtk.Label(label='Recordings'), False, False, 10)
         self.right_box.pack_start(self.annotation_scrolled_window, True, True, 0)
         self.right_box.set_size_request(300, self.annotation_box_height)
 
@@ -442,27 +442,35 @@ class EpicAnnotator(Gtk.ApplicationWindow):
 
             confirm_dialog.destroy()
 
-        dialog = Gtk.FileChooserDialog("Open video", self, action=Gtk.FileChooserAction.OPEN,
-                                    buttons=(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
-                                             Gtk.STOCK_OK, Gtk.ResponseType.OK))
+        file_dialog = Gtk.FileChooserDialog("Open video", self, action=Gtk.FileChooserAction.OPEN,
+                                            buttons=(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+                                                     Gtk.STOCK_OK, Gtk.ResponseType.OK))
 
         video_file_filter = Gtk.FileFilter()
         video_file_filter.set_name("Video files")
         video_file_filter.add_mime_type("video/*")
-        dialog.add_filter(video_file_filter)
+        file_dialog.add_filter(video_file_filter)
 
         all_file_filter = Gtk.FileFilter()
         all_file_filter.set_name('All files')
         all_file_filter.add_pattern('*')
-        dialog.add_filter(all_file_filter)
+        file_dialog.add_filter(all_file_filter)
 
-        response = dialog.run()
+        response = file_dialog.run()
 
         if response == Gtk.ResponseType.OK:
-            path = dialog.get_filename()
-            self.setup(path)
+            path = file_dialog.get_filename()
 
-        dialog.destroy()
+            if os.path.isdir(path):
+                message_dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.ERROR, Gtk.ButtonsType.OK, 'Invalid path')
+                message_dialog.format_secondary_text('You cannot select a folder!')
+                message_dialog.run()
+                message_dialog.destroy()
+                file_dialog.destroy()
+                self.choose_video()
+            else:
+                file_dialog.destroy()
+                self.setup(path)
 
     def update_mic_monitor(self, *args):
         while True:
