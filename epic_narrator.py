@@ -446,10 +446,15 @@ class EpicAnnotator(Gtk.ApplicationWindow):
                                     buttons=(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
                                              Gtk.STOCK_OK, Gtk.ResponseType.OK))
 
-        file_filter = Gtk.FileFilter()
-        file_filter.set_name("Video files")
-        file_filter.add_mime_type("video/*")
-        dialog.add_filter(file_filter)
+        video_file_filter = Gtk.FileFilter()
+        video_file_filter.set_name("Video files")
+        video_file_filter.add_mime_type("video/*")
+        dialog.add_filter(video_file_filter)
+
+        all_file_filter = Gtk.FileFilter()
+        all_file_filter.set_name('All files')
+        all_file_filter.add_pattern('*')
+        dialog.add_filter(all_file_filter)
 
         response = dialog.run()
 
