@@ -45,6 +45,7 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         self._timeout_id_backwards = 0
         self._timeout_id_forwards = 0
         self.was_playing_before_seek = None
+        self.is_seeking = False
 
         # menu
         self.file_menu = Gtk.Menu()
@@ -224,7 +225,6 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         self.connect("key-press-event", self.key_pressed)
         self.connect("key-release-event", self.key_released)
 
-
     def set_monitor_label(self, is_recording):
         colour = '#ff3300' if is_recording else 'black'
         self.monitor_label.set_markup('<span foreground="{}">Microphone level</span>'.format(colour))
@@ -257,11 +257,9 @@ class EpicAnnotator(Gtk.ApplicationWindow):
             return True
 
         if event.keyval == Gdk.KEY_Left:
-            if self._timeout_id_backwards == 0:
-                self.seek_backwards_pressed()
+            self.seek_backwards_pressed()
         elif event.keyval == Gdk.KEY_Right:
-            if self._timeout_id_forwards == 0:
-                self.seek_forwards_pressed()
+            self.seek_forwards_pressed()
         elif event.keyval == Gdk.KEY_space:
             self.toggle_player_playback()
         elif event.keyval == Gdk.KEY_M or event.keyval == Gdk.KEY_m:
@@ -551,7 +549,10 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         self.playback_button.set_sensitive(active)
 
     def seek_backwards_pressed(self, *args):
-        # there is no hold event in Gtk apparently, so we need to do this
+        if self.is_seeking or self._timeout_id_backwards != 0 or self._timeout_id_forwards != 0:
+            return
+
+        self.is_seeking = True
         timeout = 50
 
         if self.player.is_playing():
@@ -570,17 +571,23 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         if self.was_playing_before_seek:
             self.player.play()
 
+        self.is_seeking = False
+
     def seek_backwards(self):
         seek_pos = self.slider.get_value() - self.seek_step
 
         if seek_pos >= 1:
+            self.is_seeking = True
             self.player.set_time(int(seek_pos))
             self.video_moving(None)
 
         return True  # this will be called inside a timeout so we return True
 
     def seek_forwards_pressed(self, *args):
-        # there is no hold event in Gtk apparently, so we need to do this
+        if self.is_seeking or self._timeout_id_backwards != 0 or self._timeout_id_forwards != 0:
+            return
+
+        self.is_seeking = True
         timeout = 50
 
         if self.player.is_playing():
@@ -599,10 +606,13 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         if self.was_playing_before_seek:
             self.player.play()
 
+        self.is_seeking = False
+
     def seek_forwards(self):
         seek_pos = self.slider.get_value() + self.seek_step
 
         if seek_pos < self.video_length_ms:
+            self.is_seeking = True
             self.player.set_time(int(seek_pos))
             self.video_moving(None)
 
