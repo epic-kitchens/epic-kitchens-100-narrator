@@ -101,7 +101,7 @@ class Recorder:
         # Fancy indexing with mapping creates a (necessary!) copy:
         self.q.put(indata[::self.downsample, self.mapping])
 
-        if self.is_recording and self.current_file is not None:
+        if self.is_recording and self.current_file is not None and not self.current_file.closed:
             self.current_file.buffer_write(indata, dtype='float32')
 
     def start_monitor(self):

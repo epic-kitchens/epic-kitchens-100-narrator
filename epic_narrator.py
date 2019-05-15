@@ -42,6 +42,9 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         self.annotation_box_map = {}
         self.single_window = False if sys.platform.startswith('darwin') else True
         self.annotation_box_height = self.video_height if self.single_window else 200
+        self._timeout_id_backwards = 0
+        self._timeout_id_forwards = 0
+        self.was_playing_before_seek = None
 
         # menu
         self.file_menu = Gtk.Menu()
@@ -219,6 +222,8 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         settings.set_property("gtk-application-prefer-dark-theme", False)
 
         self.connect("key-press-event", self.key_pressed)
+        self.connect("key-release-event", self.key_released)
+
 
     def set_monitor_label(self, is_recording):
         colour = '#ff3300' if is_recording else 'black'
@@ -236,14 +241,27 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         for w in widgets:
             w.set_can_focus(False)
 
+    def key_released(self, widget, event):
+        if not self.is_video_loaded:
+            return True
+
+        if event.keyval == Gdk.KEY_Left:
+            self.seek_backwards_released()
+        elif event.keyval == Gdk.KEY_Right:
+            self.seek_forwards_released()
+        else:
+            return True
+
     def key_pressed(self, widget, event):
         if not self.is_video_loaded:
             return True
 
         if event.keyval == Gdk.KEY_Left:
-            self.seek_backwards()
+            if self._timeout_id_backwards == 0:
+                self.seek_backwards_pressed()
         elif event.keyval == Gdk.KEY_Right:
-            self.seek_forwards()
+            if self._timeout_id_forwards == 0:
+                self.seek_forwards_pressed()
         elif event.keyval == Gdk.KEY_space:
             self.toggle_player_playback()
         elif event.keyval == Gdk.KEY_M or event.keyval == Gdk.KEY_m:
@@ -321,6 +339,11 @@ class EpicAnnotator(Gtk.ApplicationWindow):
     def scroll_annotations_to_bottom(self, *args):
         adj = self.annotation_scrolled_window.get_vadjustment()
         adj.set_value(adj.get_upper())
+
+    def scroll_annotations_box_to_time(self, time_ms):
+        scroll_percentage = time_ms / self.video_length_ms
+        adj = self.annotation_scrolled_window.get_vadjustment()
+        adj.set_value(scroll_percentage * adj.get_upper())
 
     def play_recording(self, widget, event, time_ms):
         rec_player = vlc.Instance('--no-xlib').media_player_new()
@@ -471,6 +494,8 @@ class EpicAnnotator(Gtk.ApplicationWindow):
             else:
                 file_dialog.destroy()
                 self.setup(path)
+        else:
+            file_dialog.destroy()
 
     def update_mic_monitor(self, *args):
         while True:
@@ -527,12 +552,23 @@ class EpicAnnotator(Gtk.ApplicationWindow):
 
     def seek_backwards_pressed(self, *args):
         # there is no hold event in Gtk apparently, so we need to do this
-        self._timeout_id_backwards = GLib.timeout_add(50, self.seek_backwards)
+        timeout = 50
+
+        if self.player.is_playing():
+            self.player.pause()
+            self.was_playing_before_seek = True
+        else:
+            self.was_playing_before_seek = False
+
+        self._timeout_id_backwards = GLib.timeout_add(timeout, self.seek_backwards)
 
     def seek_backwards_released(self, *args):
         # remove timeout
         GLib.source_remove(self._timeout_id_backwards)
         self._timeout_id_backwards = 0
+
+        if self.was_playing_before_seek:
+            self.player.play()
 
     def seek_backwards(self):
         seek_pos = self.slider.get_value() - self.seek_step
@@ -546,12 +582,22 @@ class EpicAnnotator(Gtk.ApplicationWindow):
     def seek_forwards_pressed(self, *args):
         # there is no hold event in Gtk apparently, so we need to do this
         timeout = 50
+
+        if self.player.is_playing():
+            self.player.pause()
+            self.was_playing_before_seek = True
+        else:
+            self.was_playing_before_seek = False
+
         self._timeout_id_forwards = GLib.timeout_add(timeout, self.seek_forwards)
 
     def seek_forwards_released(self, *args):
         # remove timeout
         GLib.source_remove(self._timeout_id_forwards)
         self._timeout_id_forwards = 0
+
+        if self.was_playing_before_seek:
+            self.player.play()
 
     def seek_forwards(self):
         seek_pos = self.slider.get_value() + self.seek_step
@@ -614,6 +660,7 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         current_time_ms = self.player.get_time()
         self.slider.set_value(current_time_ms)
         self.update_time_label(current_time_ms)
+        self.scroll_annotations_box_to_time(current_time_ms)
 
     def slider_moved(self, *args):
         # this is called when is moved by the user
@@ -623,6 +670,7 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         slider_pos_ms = self.slider.get_value()
         self.player.set_time(int(slider_pos_ms))
         self.update_time_label(slider_pos_ms)
+        self.scroll_annotations_box_to_time(slider_pos_ms)
 
         return False
 
