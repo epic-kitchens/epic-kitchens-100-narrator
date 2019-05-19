@@ -640,13 +640,21 @@ class EpicAnnotator(Gtk.ApplicationWindow):
             self.player.play()
             self.play_video(args)
 
-    def toggle_audio(self, *args):
+    def mute_video(self):
+        if not self.player.audio_get_mute():
+            self.mute_button.set_image(self.unmute_image)
+            self.player.audio_set_mute(True)
+
+    def unmute_video(self):
         if self.player.audio_get_mute():
             self.mute_button.set_image(self.mute_image)
             self.player.audio_set_mute(False)
+
+    def toggle_audio(self, *args):
+        if self.player.audio_get_mute():
+            self.unmute_video()
         else:
-            self.mute_button.set_image(self.unmute_image)
-            self.player.audio_set_mute(True)
+            self.mute_video()
 
     def update_time_label(self, ms):
         ms_str = ms_to_timestamp(ms)
@@ -749,13 +757,12 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         self.video_path = video_path
         media = self.vlc_instance.media_new_path(self.video_path)
         self.player.set_mrl(media.get_mrl())
-
         self.playback_button.set_image(self.pause_image)
-        self.player.audio_set_mute(True)
         self.toggle_media_controls(True)
         self.record_button.set_sensitive(True)
         self.mute_button.set_sensitive(True)
         self.is_video_loaded = True
+        self.mute_video()
 
         output_path = self.choose_output_folder(os.path.join(os.path.expanduser("~")))
 
