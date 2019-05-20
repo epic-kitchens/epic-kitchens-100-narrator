@@ -40,7 +40,10 @@ class Recordings:
             self._recordings[time_ms] = f
 
     def get_path_for_recording(self, time_ms):
-        return self._recordings[time_ms]
+        if time_ms in self._recordings:
+            return self._recordings[time_ms]
+        else:
+            return None
 
     def get_recordings_times(self):
         return sorted(list(self._recordings.keys()))

@@ -340,15 +340,19 @@ class EpicAnnotator(Gtk.ApplicationWindow):
 
     def scroll_annotations_box_to_time(self, time_ms):
         scroll_percentage = time_ms / self.video_length_ms
+        scroll_percentage *= 0.85  # hack to place the box at the top of scroll window
         adj = self.annotation_scrolled_window.get_vadjustment()
         adj.set_value(scroll_percentage * adj.get_upper())
 
     def play_recording(self, widget, event, time_ms):
         rec_player = vlc.Instance('--no-xlib').media_player_new()
-        audio_media = self.vlc_instance.media_new_path(self.recordings.get_path_for_recording(time_ms))
-        rec_player.set_mrl(audio_media.get_mrl())
-        rec_player.audio_set_mute(False)
-        rec_player.play()
+        recording_path = self.recordings.get_path_for_recording(time_ms)
+
+        if recording_path is not None:
+            audio_media = self.vlc_instance.media_new_path(recording_path)
+            rec_player.set_mrl(audio_media.get_mrl())
+            rec_player.audio_set_mute(False)
+            rec_player.play()
 
     def delete_recording(self, widget, event, time_ms):
         dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.QUESTION,
