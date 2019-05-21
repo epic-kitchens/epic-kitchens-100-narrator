@@ -54,6 +54,9 @@ class Recordings:
     def empty(self):
         return not bool(self._recordings)
 
+    def recording_exists(self, time_ms):
+        return time_ms in self._recordings
+
 
 def ms_to_timestamp(millis):
     seconds = (millis / 1000) % 60

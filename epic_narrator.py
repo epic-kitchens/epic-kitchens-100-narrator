@@ -533,6 +533,11 @@ class EpicAnnotator(Gtk.ApplicationWindow):
             self.play_video(None)
 
     def start_recording(self):
+        rec_time = self.player.get_time()
+
+        while self.recordings.recording_exists(rec_time):
+            rec_time += 1  # shifting one millisecond
+
         self.record_button.set_image(self.record_image)
         self.set_monitor_label(True)
         self.toggle_media_controls(False)
@@ -540,7 +545,6 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         if self.player.is_playing():
             self.pause_video(None)
 
-        rec_time = self.player.get_time()
         path = self.recordings.add_recording(rec_time)
         self.recorder.start_recording(path)
         self.add_annotation_box(rec_time)
