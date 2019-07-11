@@ -19,7 +19,7 @@ gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, GLib, Gdk, Pango
 from matplotlib.animation import FuncAnimation
 from matplotlib.backends.backend_gtk3agg import (FigureCanvasGTK3Agg as FigureCanvas)
-from threading import Thread
+from threading import Thread, Event
 
 if sys.platform.startswith('darwin'):
     plt.switch_backend('MacOSX')
@@ -235,19 +235,17 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         self.connect("key-release-event", self.key_released)
 
         # queue to play recordings with video
-        self.is_playing_recording = False
         self.rec_queue = UniqueQueue()  # writer() writes to rec_queue from _this_ process
         self.rec_worker = Thread(target=self.rec_reader_proc, args=(self.rec_queue,))
         self.rec_worker.setDaemon(True)
+        self.rec_playing_event = Event()
+        self.rec_playing_event.clear()
+        self.rec_worker.start()
 
     def rec_reader_proc(self, queue):
         while True:
-            if not self.is_video_loaded:
-                continue
-
-            # unfortunately the state of vlc player does not get update for this player so we need to do it manually
-            if self.is_playing_recording:
-                continue
+            if not self.rec_playing_event.is_set():
+                self.rec_playing_event.wait()
 
             time_ms = queue.get()
             self.play_recording(None, None, time_ms)
@@ -256,7 +254,7 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         self.play_recs_with_video = self.play_recs_with_video_button.get_active()
 
     def finished_playing_recording(self, args):
-        self.is_playing_recording = False
+        self.rec_playing_event.set()
 
     def set_monitor_label(self, is_recording):
         colour = '#ff3300' if is_recording else 'black'
@@ -385,8 +383,8 @@ class EpicAnnotator(Gtk.ApplicationWindow):
             self.rec_player.audio_set_mute(False)
             mrl = audio_media.get_mrl()
             self.rec_player.set_mrl(mrl)
+            self.rec_playing_event.clear()
             self.rec_player.play()
-            self.is_playing_recording = True
 
     def delete_recording(self, widget, event, time_ms):
         dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.QUESTION,
@@ -712,7 +710,7 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         if self.video_length_ms > 0:
             self.slider.set_range(1, self.video_length_ms)
             # self.add_start_end_slider_ticks()
-            self.rec_worker.start()
+            self.rec_playing_event.set()
             return False  # video has loaded, will not call this again
         else:
             return True  # video not loaded yet, will try again later
