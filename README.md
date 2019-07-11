@@ -75,7 +75,9 @@ You will see all your recorded actions in the right hand-side panel. You can jum
 on the timestamp. You can also play and delete each recording with the corresponding buttons.
 
 Finally, you can listen to the recordings as you watch the video by ticking the box `Play recordings with video`, which 
-is located next to the time label.
+is located next to the time label. 
+If the narrations are very close one to the other, you might want to play the video at a slower speed when you play the recording.
+This will keep the narrations aligned with the video. 
 
 ### Keyboard shortcuts
 

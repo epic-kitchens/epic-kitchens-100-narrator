@@ -5,6 +5,7 @@ import ctypes
 import traceback
 import argparse
 import vlc
+import time
 import numpy as np
 import matplotlib
 matplotlib.use('PS')
@@ -12,12 +13,12 @@ import matplotlib.pyplot as plt
 import gi
 from recorder import Recorder
 from recordings import Recordings, ms_to_timestamp
+from unique_queue import UniqueQueue
 
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, GLib, Gdk, Pango
 from matplotlib.animation import FuncAnimation
 from matplotlib.backends.backend_gtk3agg import (FigureCanvasGTK3Agg as FigureCanvas)
-from queue import Queue
 from threading import Thread
 
 if sys.platform.startswith('darwin'):
@@ -26,21 +27,12 @@ else:
     plt.switch_backend('GTK3Agg')
 
 
-class UniqueQueue(Queue):
-    def _init(self, maxsize):
-        Queue._init(self, maxsize)
-        self.all_items = set()
-
-    def _put(self, item):
-        if item not in self.all_items:
-            Queue._put(self, item)
-            self.all_items.add(item)
-
-
 class EpicAnnotator(Gtk.ApplicationWindow):
     def __init__(self, mic_device=0):
         Gtk.ApplicationWindow.__init__(self, title='Epic Annotator')
 
+        self.player = None
+        self.rec_player = None
         self.video_length_ms = 0
         self.seek_step = 500  # 500ms
         self.red_tick_colour = "#ff3300"
@@ -59,11 +51,6 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         self.was_playing_before_seek = None
         self.is_seeking = False
         self.play_recs_with_video = False
-
-        self.rec_player = vlc.Instance('--no-xlib')
-        self.rec_medialist = self.rec_player.media_list_new()
-        self.rec_list_player = self.rec_player.media_list_player_new()
-        self.rec_list_player.set_media_list(self.rec_medialist)
 
         # menu
         self.file_menu = Gtk.Menu()
@@ -248,18 +235,28 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         self.connect("key-release-event", self.key_released)
 
         # queue to play recordings with video
+        self.is_playing_recording = False
         self.rec_queue = UniqueQueue()  # writer() writes to rec_queue from _this_ process
-        rec_worker = Thread(target=self.rec_reader_proc, args=(self.rec_queue,))
-        rec_worker.setDaemon(True)
-        rec_worker.start()
+        self.rec_worker = Thread(target=self.rec_reader_proc, args=(self.rec_queue,))
+        self.rec_worker.setDaemon(True)
 
     def rec_reader_proc(self, queue):
         while True:
-            time = queue.get()
-            self.play_recording(None, None, time)
+            if not self.is_video_loaded:
+                continue
+
+            # unfortunately the state of vlc player does not get update for this player so we need to do it manually
+            if self.is_playing_recording:
+                continue
+
+            time_ms = queue.get()
+            self.play_recording(None, None, time_ms)
 
     def play_recs_with_video_toggled(self, widget):
         self.play_recs_with_video = self.play_recs_with_video_button.get_active()
+
+    def finished_playing_recording(self, args):
+        self.is_playing_recording = False
 
     def set_monitor_label(self, is_recording):
         colour = '#ff3300' if is_recording else 'black'
@@ -385,11 +382,11 @@ class EpicAnnotator(Gtk.ApplicationWindow):
 
         if recording_path is not None:
             audio_media = self.vlc_instance.media_new_path(recording_path)
-            rec_player = self.vlc_instance.media_player_new()
-            rec_player.audio_set_mute(False)
+            self.rec_player.audio_set_mute(False)
             mrl = audio_media.get_mrl()
-            rec_player.set_mrl(mrl)
-            rec_player.play()
+            self.rec_player.set_mrl(mrl)
+            self.rec_player.play()
+            self.is_playing_recording = True
 
     def delete_recording(self, widget, event, time_ms):
         dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.QUESTION,
@@ -715,6 +712,7 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         if self.video_length_ms > 0:
             self.slider.set_range(1, self.video_length_ms)
             # self.add_start_end_slider_ticks()
+            self.rec_worker.start()
             return False  # video has loaded, will not call this again
         else:
             return True  # video not loaded yet, will try again later
@@ -781,11 +779,14 @@ class EpicAnnotator(Gtk.ApplicationWindow):
     def setup_vlc_player(self, widget):
         self.vlc_instance = vlc.Instance('--no-xlib')
         self.player = self.vlc_instance.media_player_new()
-        #self.rec_player = self.vlc_instance.media_player_new()
+        self.rec_player = self.vlc_instance.media_player_new()
         self.set_vlc_window()
-        events = self.player.event_manager()
-        events.event_attach(vlc.EventType.MediaPlayerPositionChanged, self.video_moving)
-        events.event_attach(vlc.EventType.MediaPlayerEndReached, self.video_ended)
+        main_events = self.player.event_manager()
+        main_events.event_attach(vlc.EventType.MediaPlayerPositionChanged, self.video_moving)
+        main_events.event_attach(vlc.EventType.MediaPlayerEndReached, self.video_ended)
+
+        rec_events = self.rec_player.event_manager()
+        rec_events.event_attach(vlc.EventType.MediaPlayerEndReached, self.finished_playing_recording)
 
     def video_area_ready(self, widget):
         self.setup_vlc_player(widget)
