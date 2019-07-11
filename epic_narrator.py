@@ -1,4 +1,5 @@
 import os
+import queue
 import sys
 import ctypes
 import traceback
@@ -8,7 +9,6 @@ import numpy as np
 import matplotlib
 matplotlib.use('PS')
 import matplotlib.pyplot as plt
-import queue
 import gi
 from recorder import Recorder
 from recordings import Recordings, ms_to_timestamp
@@ -17,12 +17,24 @@ gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, GLib, Gdk, Pango
 from matplotlib.animation import FuncAnimation
 from matplotlib.backends.backend_gtk3agg import (FigureCanvasGTK3Agg as FigureCanvas)
-
+from queue import Queue
+from threading import Thread
 
 if sys.platform.startswith('darwin'):
     plt.switch_backend('MacOSX')
 else:
     plt.switch_backend('GTK3Agg')
+
+
+class UniqueQueue(Queue):
+    def _init(self, maxsize):
+        Queue._init(self, maxsize)
+        self.all_items = set()
+
+    def _put(self, item):
+        if item not in self.all_items:
+            Queue._put(self, item)
+            self.all_items.add(item)
 
 
 class EpicAnnotator(Gtk.ApplicationWindow):
@@ -32,7 +44,7 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         self.video_length_ms = 0
         self.seek_step = 500  # 500ms
         self.red_tick_colour = "#ff3300"
-        self.video_width = 680
+        self.video_width = 900
         self.video_height = 400
         self.connect('destroy', Gtk.main_quit)
         self.recorder = Recorder(device_id=mic_device)
@@ -46,6 +58,12 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         self._timeout_id_forwards = 0
         self.was_playing_before_seek = None
         self.is_seeking = False
+        self.play_recs_with_video = False
+
+        self.rec_player = vlc.Instance('--no-xlib')
+        self.rec_medialist = self.rec_player.media_list_new()
+        self.rec_list_player = self.rec_player.media_list_player_new()
+        self.rec_list_player.set_media_list(self.rec_medialist)
 
         # menu
         self.file_menu = Gtk.Menu()
@@ -125,7 +143,11 @@ class EpicAnnotator(Gtk.ApplicationWindow):
 
             self.speed_time_box.pack_start(speed_item, False, False, 0)
 
+        self.play_recs_with_video_button = Gtk.CheckButton(label='Play recordings with video')
+        self.play_recs_with_video_button.connect('toggled', self.play_recs_with_video_toggled)
+
         self.speed_time_box.pack_end(self.time_label, False, False, 0)
+        self.speed_time_box.pack_end(self.play_recs_with_video_button, False, False, 5)
 
         # button box
         self.button_box = Gtk.ButtonBox()
@@ -179,7 +201,7 @@ class EpicAnnotator(Gtk.ApplicationWindow):
             gh.max_height = 300
             gh.min_height = 300
             gh.max_width = 2000
-            gh.min_width = 700
+            gh.min_width = 900
             self.set_geometry_hints(None, gh, Gdk.WindowHints.MAX_SIZE)
 
         self.video_box.pack_start(self.speed_time_box, False, False, 10)
@@ -225,6 +247,20 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         self.connect("key-press-event", self.key_pressed)
         self.connect("key-release-event", self.key_released)
 
+        # queue to play recordings with video
+        self.rec_queue = UniqueQueue()  # writer() writes to rec_queue from _this_ process
+        rec_worker = Thread(target=self.rec_reader_proc, args=(self.rec_queue,))
+        rec_worker.setDaemon(True)
+        rec_worker.start()
+
+    def rec_reader_proc(self, queue):
+        while True:
+            time = queue.get()
+            self.play_recording(None, None, time)
+
+    def play_recs_with_video_toggled(self, widget):
+        self.play_recs_with_video = self.play_recs_with_video_button.get_active()
+
     def set_monitor_label(self, is_recording):
         colour = '#ff3300' if is_recording else 'black'
         self.monitor_label.set_markup('<span foreground="{}">Microphone level</span>'.format(colour))
@@ -236,7 +272,7 @@ class EpicAnnotator(Gtk.ApplicationWindow):
     def set_focus(self):
         widgets = [self.main_box, self.slider, self.video_box, self.button_box,
                    self.speed_time_box, self.seek_backward_button, self.seek_forward_button, self.playback_button,
-                   self.record_button, self.mute_button, self.annotation_box, self]
+                   self.record_button, self.mute_button, self.annotation_box, self.play_recs_with_video_button, self]
 
         for w in widgets:
             w.set_can_focus(False)
@@ -345,13 +381,14 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         adj.set_value(scroll_percentage * adj.get_upper())
 
     def play_recording(self, widget, event, time_ms):
-        rec_player = vlc.Instance('--no-xlib').media_player_new()
         recording_path = self.recordings.get_path_for_recording(time_ms)
 
         if recording_path is not None:
             audio_media = self.vlc_instance.media_new_path(recording_path)
-            rec_player.set_mrl(audio_media.get_mrl())
+            rec_player = self.vlc_instance.media_player_new()
             rec_player.audio_set_mute(False)
+            mrl = audio_media.get_mrl()
+            rec_player.set_mrl(mrl)
             rec_player.play()
 
     def delete_recording(self, widget, event, time_ms):
@@ -688,6 +725,12 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         self.update_time_label(current_time_ms)
         self.scroll_annotations_box_to_time(current_time_ms)
 
+        if self.play_recs_with_video:
+            rec = self.recordings.get_recording_at(current_time_ms)
+
+            if rec:
+                self.rec_queue.put(rec)
+
     def slider_moved(self, *args):
         # this is called when is moved by the user
         if self.video_length_ms == 0:
@@ -738,6 +781,7 @@ class EpicAnnotator(Gtk.ApplicationWindow):
     def setup_vlc_player(self, widget):
         self.vlc_instance = vlc.Instance('--no-xlib')
         self.player = self.vlc_instance.media_player_new()
+        #self.rec_player = self.vlc_instance.media_player_new()
         self.set_vlc_window()
         events = self.player.event_manager()
         events.event_attach(vlc.EventType.MediaPlayerPositionChanged, self.video_moving)

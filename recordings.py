@@ -51,6 +51,17 @@ class Recordings:
     def get_last_recording_time(self):
         return sorted(self._recordings.keys())[-1]
 
+    def get_recording_at(self, time_ms, neighbourhood=1000):
+        recs = [t for t in self._recordings.keys() if abs(t - time_ms) <= neighbourhood]
+
+        if not recs:
+            return None
+
+        dist = [abs(t - time_ms) for t in recs]
+        recs = [x for y, x in sorted(zip(dist, recs))]
+
+        return recs[0]
+
     def empty(self):
         return not bool(self._recordings)
 

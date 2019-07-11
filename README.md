@@ -74,6 +74,9 @@ the button again to stop the recording and continue annotating.
 You will see all your recorded actions in the right hand-side panel. You can jump to the action location by clicking 
 on the timestamp. You can also play and delete each recording with the corresponding buttons.
 
+Finally, you can listen to the recordings as you watch the video by ticking the box `Play recordings with video`, which 
+is located next to the time label.
+
 ### Keyboard shortcuts
 
 - `left arrow`: seek backwards
