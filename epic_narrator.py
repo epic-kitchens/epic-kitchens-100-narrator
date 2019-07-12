@@ -659,11 +659,12 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         return True  # this will be called inside a timeout so we return True
 
     def slider_clicked(self, *args):
-        pass  # no need to do anything
+        self.is_seeking = True
 
     def slider_released(self, *args):
         slider_pos_ms = int(self.slider.get_value())
         self.player.set_time(slider_pos_ms)
+        self.is_seeking = False
 
     def pause_video(self, *args):
         self.player.pause()
@@ -721,8 +722,8 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         self.update_time_label(current_time_ms)
         self.scroll_annotations_box_to_time(current_time_ms)
 
-        if self.play_recs_with_video:
-            rec = self.recordings.get_recording_at(current_time_ms)
+        if self.play_recs_with_video and not self.is_seeking:
+            rec = self.recordings.get_closet_recording(current_time_ms)
 
             if rec:
                 self.rec_queue.put(rec)

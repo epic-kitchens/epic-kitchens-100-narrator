@@ -1,6 +1,7 @@
 import glob
 import math
 import os
+import bisect
 
 
 class Recordings:
@@ -11,22 +12,24 @@ class Recordings:
         self.video_annotations_folder = os.path.join(self.base_folder, self.video_name)
         self.audio_extension = audio_extension
         self._recordings = {}
+        self._recording_times = []
         os.makedirs(self.video_annotations_folder, exist_ok=True)
 
     def add_recording(self, time):
         os.makedirs(self.video_annotations_folder, exist_ok=True)
         path = os.path.join(self.video_annotations_folder, '{}.{}'.format(time, self.audio_extension))
         self._recordings[time] = path
+        bisect.insort(self._recording_times, time)
         return path
 
     def delete_recording(self, time):
         if time in self._recordings:
             os.remove(self._recordings[time])
             del self._recordings[time]
+            self._recording_times.remove(time)  # no need to sort when we delete
 
     def delete_last(self):
-        last = sorted(self._recordings.keys())[-1]
-        self.delete_recording(last)
+        self.delete_recording(self._recording_times[-1])
 
     def scan_folder(self):
         return glob.glob(os.path.join(self.video_annotations_folder, '*.{}'.format(self.audio_extension)))
@@ -38,6 +41,7 @@ class Recordings:
         for f in self.scan_folder():
             time_ms = int(os.path.splitext(os.path.basename(f))[0])
             self._recordings[time_ms] = f
+            bisect.insort(self._recording_times, time_ms)
 
     def get_path_for_recording(self, time_ms):
         if time_ms in self._recordings:
@@ -46,21 +50,36 @@ class Recordings:
             return None
 
     def get_recordings_times(self):
-        return sorted(list(self._recordings.keys()))
+        return self._recording_times
 
     def get_last_recording_time(self):
-        return sorted(self._recordings.keys())[-1]
+        return self._recording_times[-1]
 
-    def get_recording_at(self, time_ms, neighbourhood=1000):
-        recs = [t for t in self._recordings.keys() if abs(t - time_ms) <= neighbourhood]
+    def get_closet_recording(self, time_ms, neighbourhood=1000):
+        """
+            Assumes myList is sorted. Returns closest value to myNumber.
 
-        if not recs:
+            If two numbers are equally close, return the smallest number.
+            """
+        pos = bisect.bisect_left(self._recording_times, time_ms)
+
+        if pos == 0:
+            closest = self._recording_times[0]
+        elif pos == len(self._recording_times):
+            closest = self._recording_times[-1]
+        else:
+            before = self._recording_times[pos - 1]
+            after = self._recording_times[pos]
+
+            if after - time_ms < time_ms - before:
+                closest = after
+            else:
+                closest = before
+
+        if abs(closest - time_ms) <= neighbourhood:
+            return closest
+        else:
             return None
-
-        dist = [abs(t - time_ms) for t in recs]
-        recs = [x for y, x in sorted(zip(dist, recs))]
-
-        return recs[0]
 
     def empty(self):
         return not bool(self._recordings)
