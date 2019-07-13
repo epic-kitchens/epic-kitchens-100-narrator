@@ -167,7 +167,7 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         self.right_box.pack_start(self.annotation_scrolled_window, True, True, 0)
         self.right_box.set_size_request(300, self.annotation_box_height)
 
-        self.annotation_box.connect('size-allocate', self.scroll_annotations_to_bottom)
+        #self.annotation_box.connect('size-allocate', self.scroll_annotations_to_bottom)
 
         self.video_path_label = Gtk.Label(label=' ')
         self.recordings_path_label = Gtk.Label(label=' ')
@@ -241,6 +241,7 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         self.rec_playing_event = Event()
         self.rec_playing_event.clear()
         self.rec_worker.start()
+        self.last_played_rec = None
 
     def rec_reader_proc(self, queue):
         while True:
@@ -601,6 +602,7 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         else:
             self.was_playing_before_seek = False
 
+        self.last_played_rec = None
         self._timeout_id_backwards = GLib.timeout_add(timeout, self.seek_backwards)
 
     def seek_backwards_released(self, *args):
@@ -636,6 +638,7 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         else:
             self.was_playing_before_seek = False
 
+        self.last_played_rec = None
         self._timeout_id_forwards = GLib.timeout_add(timeout, self.seek_forwards)
 
     def seek_forwards_released(self, *args):
@@ -669,10 +672,12 @@ class EpicAnnotator(Gtk.ApplicationWindow):
     def pause_video(self, *args):
         self.player.pause()
         self.playback_button.set_image(self.play_image)
+        self.last_played_rec = None
 
     def play_video(self, *args):
         self.player.play()
         self.playback_button.set_image(self.pause_image)
+        self.last_played_rec = None
 
     def toggle_player_playback(self, *args):
         if self.player.is_playing():
@@ -725,7 +730,8 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         if self.play_recs_with_video and not self.is_seeking:
             rec = self.recordings.get_closet_recording(current_time_ms)
 
-            if rec:
+            if rec and rec != self.last_played_rec:
+                self.last_played_rec = rec
                 self.rec_queue.put(rec)
 
     def slider_moved(self, *args):
@@ -792,7 +798,7 @@ class EpicAnnotator(Gtk.ApplicationWindow):
 
     def choose_output_folder(self, default_output):
         dialog = Gtk.FileChooserDialog("Select output folder", self, action=Gtk.FileChooserAction.SELECT_FOLDER,
-                                    buttons=(Gtk.STOCK_OK, Gtk.ResponseType.OK))
+                                       buttons=(Gtk.STOCK_OK, Gtk.ResponseType.OK))
 
         dialog.set_current_folder(default_output)
         dialog.run()

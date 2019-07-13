@@ -10,3 +10,8 @@ class UniqueQueue(Queue):
         if item not in self.all_items:
             Queue._put(self, item)
             self.all_items.add(item)
+
+    def _get(self):
+        item = Queue._get(self)
+        self.all_items.remove(item)
+        return item
