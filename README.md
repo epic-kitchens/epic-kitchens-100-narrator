@@ -30,6 +30,12 @@ Alternatively, you can try to install the necessary modules yourself:
 
 Note that the annotator works with Python 3 only. 
 
+##### Choppy playback
+
+If you experience choppy playback on Linux your VLC is probably not decoding the videos correctly.
+
+Try to install `libva1, libva-{mesa,vdpau}-driver` to fix this issue. More on this [here](https://wiki.archlinux.org/index.php/Hardware_video_acceleration)
+
 ### Mac OS
 
 Use [brew](https://brew.sh/) and pip to install the dependencies. 
