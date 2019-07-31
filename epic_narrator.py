@@ -19,7 +19,7 @@ gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, GLib, Gdk, Pango
 from matplotlib.animation import FuncAnimation
 from matplotlib.backends.backend_gtk3agg import (FigureCanvasGTK3Agg as FigureCanvas)
-from threading import Thread, Event
+from threading import Thread, Event, Timer
 
 if sys.platform.startswith('darwin'):
     plt.switch_backend('MacOSX')
@@ -557,13 +557,18 @@ class EpicAnnotator(Gtk.ApplicationWindow):
             self.stop_recording()
 
     def stop_recording(self, play_afterwards=True):
-        self.recorder.stop_recording()
         self.record_button.set_image(self.mic_image)
         self.set_monitor_label(False)
-        self.toggle_media_controls(True)
+
+        timer = Timer(0.3, self.stop_recording_proc, kwargs={'play_afterwards': play_afterwards})
+        timer.start()
+        timer.join()
 
         if play_afterwards:
             self.play_video(None)
+
+    def stop_recording_proc(self, play_afterwards=True):
+        self.recorder.stop_recording()
 
     def start_recording(self):
         rec_time = self.player.get_time()
@@ -822,7 +827,9 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         self.is_video_loaded = True
         self.mute_video()
 
-        output_path = self.choose_output_folder(os.path.join(os.path.expanduser("~")))
+        video_folder = os.path.dirname(video_path)
+
+        output_path = self.choose_output_folder(video_folder)
 
         if self.recordings is not None:
             # reset things
@@ -844,7 +851,7 @@ class EpicAnnotator(Gtk.ApplicationWindow):
 
         self.normal_speed_button.set_active(True)  # reset normal speed
         self.set_video_recordings_paths_labels()
-        self.play_video()
+        self.pause_video()
 
 
 if __name__ == '__main__':
