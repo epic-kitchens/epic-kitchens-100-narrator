@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Creator: CorelDRAW 2017 -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xml:space="preserve"
+   width="5.6774101in"
+   height="5.6774101in"
+   version="1.1"
+   style="clip-rule:evenodd;fill-rule:evenodd;image-rendering:optimizeQuality;shape-rendering:geometricPrecision;text-rendering:geometricPrecision"
+   viewBox="0 0 5801.2941 5801.294"
+   id="svg19"
+   sodipodi:docname="EPIC-KITCHENS rev2.svg"
+   inkscape:version="0.92.3 (2405546, 2018-03-11)"><metadata
+   id="metadata23"><rdf:RDF><cc:Work
+       rdf:about=""><dc:format>image/svg+xml</dc:format><dc:type
+         rdf:resource="http://purl.org/dc/dcmitype/StillImage" /><dc:title></dc:title></cc:Work></rdf:RDF></metadata><sodipodi:namedview
+   pagecolor="#ffffff"
+   bordercolor="#666666"
+   borderopacity="1"
+   objecttolerance="10"
+   gridtolerance="10"
+   guidetolerance="10"
+   inkscape:pageopacity="0"
+   inkscape:pageshadow="2"
+   inkscape:window-width="1327"
+   inkscape:window-height="737"
+   id="namedview21"
+   showgrid="false"
+   inkscape:zoom="0.36874982"
+   inkscape:cx="372.66097"
+   inkscape:cy="286.96886"
+   inkscape:window-x="0"
+   inkscape:window-y="25"
+   inkscape:window-maximized="0"
+   inkscape:current-layer="svg19" />
+ <defs
+   id="defs4">
+  <style
+   type="text/css"
+   id="style2">
+   <![CDATA[
+    .fil2 {fill:#1F1F1F}
+    .fil3 {fill:#FE002A}
+    .fil0 {fill:white}
+    .fil1 {fill:#1F1F1F;fill-rule:nonzero}
+   ]]>
+  </style>
+ 
+  
+  
+  
+ 
+   
+   
+   
+   
+  </defs>
+ <g
+   id="g3741"
+   transform="matrix(1.2113174,0,0,1.2113174,-1976.2146,-873.53115)"><path
+     style="fill:#1f1f1f;fill-rule:nonzero;stroke-width:2.76903629"
+     inkscape:connector-curvature="0"
+     id="path9"
+     d="m 4371.5588,1904.0606 c 519.7481,70.5827 985.9985,297.9483 1341.6258,629.1527 437.1203,407.1315 707.5165,970.4089 707.5165,1593.2482 h -449.83 c 0,-493.2207 -215.3203,-940.4201 -563.4435,-1264.6466 -352.3876,-328.2138 -840.7349,-531.2673 -1381.3615,-531.2673 -540.6266,0 -1028.9462,203.0535 -1381.3338,531.2673 -348.1233,324.2265 -563.4436,771.4259 -563.4436,1264.6466 h -449.8298 c 0,-622.8393 270.3964,-1186.1167 707.5165,-1593.2482 355.6273,-331.2321 821.85,-558.6254 1341.6535,-629.1527 -91.9043,-139.0334 -234.8698,-361.1932 -202.7488,-418.0968 38.9603,-69.0321 439.0031,-77.0069 548.2138,-77.6438 109.2106,0.6369 509.2534,8.6394 548.2137,77.6438 32.1209,56.9036 -110.8445,279.0912 -202.7488,418.0968 z"
+     class="fil1" /><path
+     style="fill:#1f1f1f;stroke-width:2.76903629"
+     inkscape:connector-curvature="0"
+     id="path11"
+     d="m 1631.4727,4407.6017 h 4789.2146 v 235.7004 c 0,98.9655 -80.939,179.9043 -179.9043,179.9043 H 1811.4047 c -98.9654,0 -179.9043,-80.9388 -179.9043,-179.9043 v -235.7004 z"
+     class="fil2" /><path
+     style="fill:#fe002a;stroke-width:2.76903629"
+     inkscape:connector-curvature="0"
+     id="path13"
+     d="m 3420.2558,3914.2703 2.4644,-436.511 2.5198,-444.2642 c 0.4707,-82.6557 41.7016,-153.3769 113.392,-194.4971 71.6904,-41.0925 153.5708,-40.9818 225.1504,0.3324 l 377.6135,218.0338 377.6412,218.034 c 71.5796,41.3417 112.6167,112.1736 112.8659,194.8294 0.2492,82.6557 -40.4002,153.7092 -111.7306,195.4663 l -383.4562,224.3196 -376.8105,220.3876 c -71.9118,42.0616 -154.6507,42.3109 -226.784,0.6646 -72.1612,-41.674 -113.3367,-113.4198 -112.8383,-196.7401 z"
+     class="fil3" /></g>
+</svg>

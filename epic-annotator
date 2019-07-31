@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -e
+export PATH="/opt/miniconda3/bin:$PATH"
+eval "$(conda shell.bash hook)"
+conda activate epic_narrator
+python3 /opt/epic-annotator/epic_narrator.py	
