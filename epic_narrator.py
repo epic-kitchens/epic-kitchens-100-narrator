@@ -569,6 +569,7 @@ class EpicAnnotator(Gtk.ApplicationWindow):
 
     def stop_recording_proc(self, play_afterwards=True):
         self.recorder.stop_recording()
+        self.toggle_media_controls(True)
 
     def start_recording(self):
         rec_time = self.player.get_time()
@@ -722,6 +723,7 @@ class EpicAnnotator(Gtk.ApplicationWindow):
             self.slider.set_range(1, self.video_length_ms)
             # self.add_start_end_slider_ticks()
             self.rec_playing_event.set()
+            self.pause_video()
             return False  # video has loaded, will not call this again
         else:
             return True  # video not loaded yet, will try again later
@@ -851,7 +853,8 @@ class EpicAnnotator(Gtk.ApplicationWindow):
 
         self.normal_speed_button.set_active(True)  # reset normal speed
         self.set_video_recordings_paths_labels()
-        self.pause_video()
+        self.go_to(None, None, 1)
+        self.play_video()  # we need to play the video for a while to get the length in milliseconds,
 
 
 if __name__ == '__main__':
