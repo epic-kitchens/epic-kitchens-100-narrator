@@ -693,14 +693,14 @@ class EpicAnnotator(Gtk.ApplicationWindow):
             self.play_video(args)
 
     def mute_video(self):
-        if not self.player.audio_get_mute():
-            self.mute_button.set_image(self.unmute_image)
-            self.player.audio_set_mute(True)
+        #if not self.player.audio_get_mute():
+        self.mute_button.set_image(self.unmute_image)
+        self.player.audio_set_mute(True)
 
     def unmute_video(self):
-        if self.player.audio_get_mute():
-            self.mute_button.set_image(self.mute_image)
-            self.player.audio_set_mute(False)
+        #if self.player.audio_get_mute():
+        self.mute_button.set_image(self.mute_image)
+        self.player.audio_set_mute(False)
 
     def toggle_audio(self, *args):
         if self.player.audio_get_mute():
