@@ -63,7 +63,7 @@ class Recorder:
         mpl.rcParams['toolbar'] = 'None'
         fig, ax = plt.subplots()
         lines = ax.plot(self.window_data, color='w')
-        ax.axis((0, len(self.window_data), -1, 1))
+        ax.axis((0, len(self.window_data), -0.25, 0.25))
         ax.set_yticks([0])
         ax.yaxis.grid(True)
         fig.tight_layout(pad=-5)
