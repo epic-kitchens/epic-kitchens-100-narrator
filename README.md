@@ -27,6 +27,7 @@ Alternatively, you can try to install the necessary modules yourself:
     `pip install sounddevice` should install the library automatically for you.
 - [PyGObject](https://pypi.org/project/PyGObject/)
 - [matplotlib](https://pypi.org/project/matplotlib/)
+- [PyYAML](https://pypi.org/project/PyYAML/)
 
 Note that the narrator works with Python 3 only. 
 
@@ -46,7 +47,7 @@ Note that you should use pip3 (i.e. pip for python 3.x)
 
 ```bash
 brew install pygobject3 gtk+3 adwaita-icon-theme
-python3 -m pip install matplotlib python-vlc sounddevice soundfile
+python3 -m pip install matplotlib python-vlc sounddevice soundfile PyYAML
 ```
 
 Bear in mind that the `brew` installation might take a while.
