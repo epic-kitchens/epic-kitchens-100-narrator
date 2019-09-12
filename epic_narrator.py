@@ -325,9 +325,8 @@ class EpicNarrator(Gtk.ApplicationWindow):
                 current_recording = False
 
             if self.highlighed_recording_time is not None:
-                self.delete_highlighted_recording(False, time_ms=self.highlighed_recording_time)
-            else:
-                self.delete_highlighted_recording(current_recording)
+                self.delete_recording(self.highlighted_recording_button, None, self.highlighed_recording_time,
+                                      current_recording=current_recording)
 
             if paused:
                 self.play_video()
@@ -406,6 +405,9 @@ class EpicNarrator(Gtk.ApplicationWindow):
             for c in css_classes:
                 context.remove_class(c)
 
+        self.highlighed_recording_time = None
+        self.highlighted_recording_button = None
+
     def highlight_recording_annotation(self, recording_box, time_ms, current_recording=False):
         self.reset_highlighted_annotation()
 
@@ -427,29 +429,11 @@ class EpicNarrator(Gtk.ApplicationWindow):
             self.rec_playing_event.clear()
             self.rec_player.play()
 
-    def delete_recording(self, widget, event, time_ms):
-        dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.QUESTION,
-                                   (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK, Gtk.ResponseType.OK),
-                                    'Confirm delete')
-        dialog.format_secondary_text('Are you sure you want to delete recording at time {}?'.format(
-            ms_to_timestamp(time_ms)))
-        response = dialog.run()
-        dialog.destroy()
-
-        if response == Gtk.ResponseType.OK:
-            self.recordings.delete_recording(time_ms)
-            self.remove_annotation_box(widget.get_parent())
-            self.refresh_recording_ticks()
-
-    def delete_highlighted_recording(self, current_recording, time_ms=None):
+    def delete_recording(self, widget, event, time_ms, current_recording=False):
         if current_recording:
-            msg = 'Are you sure you want to delete this recording?'
+            msg = 'Are you sure you want to delete the current recording?'
         else:
-            if time_ms is None:
-                time_ms = self.recordings.get_last_recording_time()
-
             msg = 'Are you sure you want to delete recording at time {}?'.format(ms_to_timestamp(time_ms))
-
         dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.QUESTION,
                                    (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK, Gtk.ResponseType.OK),
                                    'Confirm delete')
@@ -458,13 +442,12 @@ class EpicNarrator(Gtk.ApplicationWindow):
         dialog.destroy()
 
         if response == Gtk.ResponseType.OK:
-            children = self.annotation_box.get_children()
-            self.recordings.delete_last()
-            self.remove_annotation_box(children[-1])
+            self.recordings.delete_recording(time_ms)
+            self.remove_annotation_box(widget.get_parent())
             self.refresh_recording_ticks()
-            return True
-        else:
-            return False
+
+            if time_ms == self.highlighed_recording_time:
+                self.reset_highlighted_annotation()
 
     def remove_annotation_box(self, widget):
         self.annotation_box_map = {key: val for key, val in self.annotation_box_map.items() if val != widget}
