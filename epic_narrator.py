@@ -388,7 +388,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         adj.set_value(adj.get_upper())
 
     def scroll_annotations_box_to_time(self, time_ms):
-        rec = self.recordings.get_closet_recording(time_ms)
+        rec = self.recordings.get_closest_recording(time_ms)
         box = self.annotation_box_map[rec] if rec in self.annotation_box_map else None
 
         if box is not None:
@@ -768,9 +768,9 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self.update_time_label(current_time_ms)
         self.scroll_annotations_box_to_time(current_time_ms)
 
-        if self.play_recs_with_video and not self.is_seeking:
-            rec = self.recordings.get_closet_recording(current_time_ms)
-
+        if self.play_recs_with_video and not self.is_seeking and self.highlighed_recording_time is not None:
+            rec = self.highlighed_recording_time
+            
             if rec and rec != self.last_played_rec:
                 self.last_played_rec = rec
                 self.rec_queue.put(rec)

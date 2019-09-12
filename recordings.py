@@ -55,12 +55,10 @@ class Recordings:
     def get_last_recording_time(self):
         return self._recording_times[-1]
 
-    def get_closet_recording(self, time_ms, neighbourhood=1000):
-        """
-            Assumes myList is sorted. Returns closest value to myNumber.
+    def get_closest_recording(self, time_ms, neighbourhood=1000):
+        if not self._recording_times:
+            return None
 
-            If two numbers are equally close, return the smallest number.
-            """
         pos = bisect.bisect_left(self._recording_times, time_ms)
 
         if pos == 0:
