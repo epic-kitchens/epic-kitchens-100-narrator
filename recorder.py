@@ -68,7 +68,7 @@ class Recorder:
         ax.yaxis.grid(True)
         fig.tight_layout(pad=-5)
         ax.axis('off')
-        fig.canvas.set_window_title('Epic Annotator Monitor')
+        fig.canvas.set_window_title('Epic Narrator Monitor')
 
         return fig, ax, lines
 

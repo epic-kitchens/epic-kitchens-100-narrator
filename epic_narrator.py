@@ -5,9 +5,10 @@ import ctypes
 import traceback
 import argparse
 import vlc
-import time
 import numpy as np
 import matplotlib
+from settings import Settings
+
 matplotlib.use('PS')
 import matplotlib.pyplot as plt
 import gi
@@ -27,9 +28,11 @@ else:
     plt.switch_backend('GTK3Agg')
 
 
-class EpicAnnotator(Gtk.ApplicationWindow):
+class EpicNarrator(Gtk.ApplicationWindow):
     def __init__(self, mic_device=0):
-        Gtk.ApplicationWindow.__init__(self, title='Epic Annotator')
+        Gtk.ApplicationWindow.__init__(self, title='Epic Narrator')
+        self.ui_ready = False
+        self.settings = Settings()
 
         self.player = None
         self.rec_player = None
@@ -39,7 +42,11 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         self.video_width = 900
         self.video_height = 400
         self.connect('destroy', Gtk.main_quit)
-        self.recorder = Recorder(device_id=mic_device)
+
+        saved_microphone = self.settings.get_setting('microphone')
+        mic_id = saved_microphone if saved_microphone is not None else mic_device
+        self.recorder = Recorder(device_id=mic_id)
+
         self.recordings = None
         self.video_path = None
         self.is_video_loaded = False
@@ -102,7 +109,7 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         self.mute_button.connect('clicked', self.toggle_audio)
 
         # video area
-        self.video_area = Gtk.DrawingArea() if self.single_window else Gtk.Window(title='Epic Annotator')
+        self.video_area = Gtk.DrawingArea() if self.single_window else Gtk.Window(title='Epic Narrator')
         self.video_area.set_size_request(self.video_width, self.video_height)
         self.video_area.connect('realize', self.video_area_ready)
 
@@ -242,6 +249,7 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         self.rec_playing_event.clear()
         self.rec_worker.start()
         self.last_played_rec = None
+        self.ui_ready = True
 
     def rec_reader_proc(self, queue):
         while True:
@@ -478,6 +486,9 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         try:
             self.recorder.change_device(index)
             self.recorder.stream.start()  # starts the microphone stream
+
+            if self.ui_ready:
+                self.settings.update_settings(microphone=index)
         except Exception as e:
             traceback.print_exc()
             dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.ERROR, Gtk.ButtonsType.OK, 'Cannot use this device')
@@ -513,6 +524,11 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         all_file_filter.set_name('All files')
         all_file_filter.add_pattern('*')
         file_dialog.add_filter(all_file_filter)
+
+        saved_video_folder = self.settings.get_setting('video_folder')
+
+        if saved_video_folder is not None and os.path.exists(saved_video_folder):
+            file_dialog.set_current_folder(saved_video_folder)
 
         response = file_dialog.run()
 
@@ -830,8 +846,10 @@ class EpicAnnotator(Gtk.ApplicationWindow):
         self.mute_video()
 
         video_folder = os.path.dirname(video_path)
-
-        output_path = self.choose_output_folder(video_folder)
+        saved_output = self.settings.get_setting('output_path')
+        suggested_folder = saved_output if saved_output is not None and os.path.exists(saved_output) else video_folder
+        output_path = self.choose_output_folder(suggested_folder)
+        self.settings.update_settings(video_folder=video_folder, output_path=output_path)
 
         if self.recordings is not None:
             # reset things
@@ -872,8 +890,8 @@ if __name__ == '__main__':
         print(Recorder.get_devices())
         exit()
 
-    annotator = EpicAnnotator(mic_device=args.set_audio_device)
-    annotator.show()
+    narrator = EpicNarrator(mic_device=args.set_audio_device)
+    narrator.show()
     Gtk.main()
-    annotator.player.stop()
-    annotator.vlc_instance.release()
+    narrator.player.stop()
+    narrator.vlc_instance.release()

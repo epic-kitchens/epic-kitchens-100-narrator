@@ -8,6 +8,7 @@ dependencies:
   - pygobject
   - gtk3
   - matplotlib
+  - pyyaml
   - pip:
     - python-vlc
     - sounddevice

@@ -1,4 +1,4 @@
-**Epic-annotator** is a tool written in Python to annotate actions in videos via narration. 
+**Epic-narrator** is a tool written in Python to annotate actions in videos via narration. 
 
 ## Installation
 
@@ -28,7 +28,7 @@ Alternatively, you can try to install the necessary modules yourself:
 - [PyGObject](https://pypi.org/project/PyGObject/)
 - [matplotlib](https://pypi.org/project/matplotlib/)
 
-Note that the annotator works with Python 3 only. 
+Note that the narrator works with Python 3 only. 
 
 ##### Choppy playback
 
@@ -61,7 +61,7 @@ Start the program with `python epic_narrator.py`. Once the program has started:
    interface ([see below how](#Selecting-audio-interface)).
 2. Load the video: `File -> Load video`
 3. Choose where you want to save your recordings. The program will create the folders 
-   `epic_annotator_recordings/video_name/` under your selected output folder.
+   `epic_narrator_recordings/video_name/` under your selected output folder.
 4. Play the video and narrate actions 
  
 ### Playing and recording 
@@ -134,4 +134,8 @@ python epic_narrator.py --set_audio_device 3
 Recordings will be saved in mono uncompress format (`.wav`) sampled at the default sample rate of
 your input audio interface.
 
+## Settings
 
+The narrator will save some settings under a directory named `epic_narrator` automatically created in your home directory.
+
+The settings will save the path of the video you narrated last, as well as the output path and the microphone id. 

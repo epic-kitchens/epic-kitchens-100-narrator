@@ -6,7 +6,7 @@ import bisect
 
 class Recordings:
     def __init__(self, base_folder, video_path, audio_extension='wav'):
-        self.base_folder = os.path.join(base_folder, 'epic_annotator_recordings')
+        self.base_folder = os.path.join(base_folder, 'epic_narrator_recordings')
         self.video_path = video_path
         self.video_name = os.path.splitext(os.path.basename(self.video_path))[0]
         self.video_annotations_folder = os.path.join(self.base_folder, self.video_name)
