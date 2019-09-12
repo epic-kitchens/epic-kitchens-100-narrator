@@ -173,8 +173,10 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self.right_box.pack_start(Gtk.Label(label='Recordings'), False, False, 10)
         self.right_box.pack_start(self.annotation_scrolled_window, True, True, 0)
         self.right_box.set_size_request(300, self.annotation_box_height)
+        self.highlighted_recording_button = None
+        self.highlighed_recording_time = None
 
-        #self.annotation_box.connect('size-allocate', self.scroll_annotations_to_bottom)
+        # self.annotation_box.connect('size-allocate', self.scroll_annotations_to_bottom)
 
         self.video_path_label = Gtk.Label(label=' ')
         self.recordings_path_label = Gtk.Label(label=' ')
@@ -322,7 +324,10 @@ class EpicNarrator(Gtk.ApplicationWindow):
             else:
                 current_recording = False
 
-            self.delete_last_recording(current_recording)
+            if self.highlighed_recording_time is not None:
+                self.delete_highlighted_recording(False, time_ms=self.highlighed_recording_time)
+            else:
+                self.delete_highlighted_recording(current_recording)
 
             if paused:
                 self.play_video()
@@ -369,20 +374,47 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self.refresh_annotation_box()
         self.annotation_box.show_all()
 
+        return box
+
     def go_to(self, widget, event, time_ms):
         self.slider.set_value(time_ms)
         self.player.set_time(int(time_ms))
         self.update_time_label(time_ms)
+
+        if widget is not None:
+            self.highlight_recording_annotation(widget.get_parent(), time_ms)
 
     def scroll_annotations_to_bottom(self, *args):
         adj = self.annotation_scrolled_window.get_vadjustment()
         adj.set_value(adj.get_upper())
 
     def scroll_annotations_box_to_time(self, time_ms):
-        scroll_percentage = time_ms / self.video_length_ms
-        scroll_percentage *= 0.85  # hack to place the box at the top of scroll window
-        adj = self.annotation_scrolled_window.get_vadjustment()
-        adj.set_value(scroll_percentage * adj.get_upper())
+        rec = self.recordings.get_closet_recording(time_ms)
+        box = self.annotation_box_map[rec] if rec in self.annotation_box_map else None
+
+        if box is not None:
+            adj = self.annotation_scrolled_window.get_vadjustment()
+            _, y = self.annotation_box.translate_coordinates(box, 0, 0)
+            adj.set_value(abs(y))
+            self.highlight_recording_annotation(box, rec)
+
+    def reset_highlighted_annotation(self):
+        if self.highlighted_recording_button is not None:
+            css_classes = ['destructive-action', 'suggested-action']
+            context = self.highlighted_recording_button.get_style_context()
+
+            for c in css_classes:
+                context.remove_class(c)
+
+    def highlight_recording_annotation(self, recording_box, time_ms, current_recording=False):
+        self.reset_highlighted_annotation()
+
+        button = recording_box.get_children()[0]
+        css_class = 'destructive-action' if current_recording else 'suggested-action'
+        context = button.get_style_context()
+        context.add_class(css_class)
+        self.highlighted_recording_button = button
+        self.highlighed_recording_time = time_ms
 
     def play_recording(self, widget, event, time_ms):
         recording_path = self.recordings.get_path_for_recording(time_ms)
@@ -409,11 +441,13 @@ class EpicNarrator(Gtk.ApplicationWindow):
             self.remove_annotation_box(widget.get_parent())
             self.refresh_recording_ticks()
 
-    def delete_last_recording(self, current_recording):
+    def delete_highlighted_recording(self, current_recording, time_ms=None):
         if current_recording:
             msg = 'Are you sure you want to delete this recording?'
         else:
-            time_ms = self.recordings.get_last_recording_time()
+            if time_ms is None:
+                time_ms = self.recordings.get_last_recording_time()
+
             msg = 'Are you sure you want to delete recording at time {}?'.format(ms_to_timestamp(time_ms))
 
         dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.QUESTION,
@@ -602,7 +636,8 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
         path = self.recordings.add_recording(rec_time)
         self.recorder.start_recording(path)
-        self.add_annotation_box(rec_time)
+        box = self.add_annotation_box(rec_time)
+        self.highlight_recording_annotation(box, rec_time, current_recording=True)
         self.add_time_tick(rec_time, colour=self.red_tick_colour)
 
     def toggle_media_controls(self, active):

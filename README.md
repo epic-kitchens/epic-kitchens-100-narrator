@@ -92,7 +92,7 @@ This will keep the narrations aligned with the video.
 - `right arrow`: seek forwards
 - `space bar`: pause/play video
 - `enter`: start/stop recording
-- `delete` or `backspace`: delete current recording (if pressed while recording) or the last recording in the video
+- `delete` or `backspace`: delete the highlighted recording
 - `m`: mute/unmute video
  
 ### Resume recording

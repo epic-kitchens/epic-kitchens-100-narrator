@@ -78,7 +78,7 @@ class Recordings:
 
         dist = abs(closest-time_ms)
 
-        if dist <= neighbourhood:  # pick only recordings ahead
+        if neighbourhood is None or (dist <= neighbourhood):  # pick only recordings ahead
             return closest
         else:
             return None
