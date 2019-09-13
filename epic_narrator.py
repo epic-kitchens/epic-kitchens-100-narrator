@@ -47,6 +47,10 @@ class EpicNarrator(Gtk.ApplicationWindow):
         mic_id = saved_microphone if saved_microphone is not None else mic_device
         self.recorder = Recorder(device_id=mic_id)
 
+        hold_to_record = self.settings.get_setting('hold_to_record')
+        self.hold_to_record = False if hold_to_record is None else hold_to_record
+        self.settings.update_settings(hold_to_record=self.hold_to_record)
+
         self.recordings = None
         self.video_path = None
         self.is_video_loaded = False
@@ -69,6 +73,15 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self.menu_bar.append(self.file_menu_item)
         self.load_video_menu_item.connect('button-press-event', self.choose_video)
         self.set_microphone_menu()
+
+        self.settings_menu = Gtk.Menu()
+        self.hold_to_record_menu_item = Gtk.CheckMenuItem(label='Hold to record')
+        self.hold_to_record_menu_item.set_active(self.hold_to_record)
+        self.hold_to_record_menu_item.connect('toggled', self.hold_to_record_toggled)
+        self.settings_menu.append(self.hold_to_record_menu_item)
+        self.settings_menu_item = Gtk.MenuItem(label='Settings')
+        self.settings_menu_item.set_submenu(self.settings_menu)
+        self.menu_bar.append(self.settings_menu_item)
 
         # button icons
         self.seek_backward_image = Gtk.Image.new_from_icon_name('media-seek-backward', Gtk.IconSize.BUTTON)
@@ -105,7 +118,8 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self.seek_forward_button.connect('pressed', self.seek_forwards_pressed)
         self.seek_forward_button.connect('released', self.seek_forwards_released)
         self.playback_button.connect('clicked', self.toggle_player_playback)
-        self.record_button.connect('clicked', self.toggle_record)
+        self.record_button.connect('pressed', self.record_button_clicked)
+        self.record_button.connect('released', self.record_button_released)
         self.mute_button.connect('clicked', self.toggle_audio)
 
         # video area
@@ -291,6 +305,10 @@ class EpicNarrator(Gtk.ApplicationWindow):
             self.seek_backwards_released()
         elif event.keyval == Gdk.KEY_Right:
             self.seek_forwards_released()
+        elif event.keyval == Gdk.KEY_Return:
+            if self.hold_to_record:
+                if self.recorder.is_recording:
+                    self.stop_recording()
         else:
             return True
 
@@ -307,7 +325,11 @@ class EpicNarrator(Gtk.ApplicationWindow):
         elif event.keyval == Gdk.KEY_M or event.keyval == Gdk.KEY_m:
             self.toggle_audio()
         elif event.keyval == Gdk.KEY_Return:
-            self.toggle_record()
+            if self.hold_to_record:
+                if not self.recorder.is_recording:
+                    self.start_recording()
+            else:
+                self.toggle_record()
         elif event.keyval == Gdk.KEY_Delete or event.keyval == Gdk.KEY_BackSpace:
             if self.recordings.empty():
                 pass
@@ -337,6 +359,10 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
     def show(self):
         self.show_all()
+
+    def hold_to_record_toggled(self, args):
+        self.hold_to_record = self.hold_to_record_menu_item.get_active()
+        self.settings.update_settings(hold_to_record=self.hold_to_record)
 
     def add_annotation_box(self, time_ms):
         box = Gtk.ButtonBox()
@@ -583,6 +609,18 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
         return self.monitor_lines
 
+    def record_button_clicked(self, *args):
+        if self.hold_to_record:
+            if not self.recorder.is_recording:
+                self.start_recording()
+        else:
+            self.toggle_record()
+
+    def record_button_released(self, *args):
+        if self.hold_to_record:
+            if self.recorder.is_recording:
+                self.stop_recording()
+
     def toggle_record(self, *args):
         if not self.recorder.is_recording:
             self.start_recording()
@@ -593,9 +631,12 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self.record_button.set_image(self.mic_image)
         self.set_monitor_label(False)
 
-        timer = Timer(0.3, self.stop_recording_proc, kwargs={'play_afterwards': play_afterwards})
-        timer.start()
-        timer.join()
+        if not self.hold_to_record:
+            timer = Timer(0.5, self.stop_recording_proc, kwargs={'play_afterwards': play_afterwards})
+            timer.start()
+            timer.join()
+        else:
+            self.stop_recording_proc()
 
         if play_afterwards:
             self.play_video(None)

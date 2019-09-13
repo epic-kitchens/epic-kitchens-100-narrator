@@ -76,7 +76,11 @@ You can also change the speed of the playback.
 
 To annotate an action press the microphone button. 
 This will pause the video and will start recording your voice immediately. Once you have narrated the action, press 
-the button again to stop the recording and continue annotating.
+the button again to stop the recording and continue annotating. The end of the recording will be delayed by 0.5 seconds
+to avoid clipping. 
+
+Alternatively, if you switch the option `Settings -> Hold to record` you can record while holding down either the record
+button or the enter key. In this case the recording will stop immediately as soon as you release the key or the button.
 
 You will see all your recorded actions in the right hand-side panel. You can jump to the action location by clicking 
 on the timestamp. You can also play and delete each recording with the corresponding buttons.
