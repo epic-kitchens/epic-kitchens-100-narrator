@@ -31,9 +31,11 @@ else:
 class EpicNarrator(Gtk.ApplicationWindow):
     def __init__(self, mic_device=0):
         Gtk.ApplicationWindow.__init__(self, title='Epic Narrator')
+        gtk_settings = Gtk.Settings.get_default()
+        gtk_settings.set_property("gtk-application-prefer-dark-theme", False)
+
         self.ui_ready = False
         self.settings = Settings()
-
         self.player = None
         self.rec_player = None
         self.video_length_ms = 0
@@ -43,10 +45,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self.video_height = 400
         self.connect('destroy', Gtk.main_quit)
 
-        saved_microphone = self.settings.get_setting('microphone')
-        mic_id = saved_microphone if saved_microphone is not None else mic_device
-        self.recorder = Recorder(device_id=mic_id)
-
+        self.recorder = self.set_mic(mic_device)
         hold_to_record = self.settings.get_setting('hold_to_record')
         self.hold_to_record = False if hold_to_record is None else hold_to_record
         self.settings.update_settings(hold_to_record=self.hold_to_record)
@@ -251,9 +250,6 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self.record_button.set_sensitive(False)
         self.mute_button.set_sensitive(False)
 
-        settings = Gtk.Settings.get_default()
-        settings.set_property("gtk-application-prefer-dark-theme", False)
-
         self.connect("key-press-event", self.key_pressed)
         self.connect("key-release-event", self.key_released)
 
@@ -266,6 +262,25 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self.rec_worker.start()
         self.last_played_rec = None
         self.ui_ready = True
+
+    def set_mic(self, default_mic_device):
+        saved_microphone = self.settings.get_setting('microphone')
+        mic_id = saved_microphone if saved_microphone is not None else default_mic_device
+
+        try:
+            recorder = Recorder(device_id=mic_id)
+        except Exception:
+            recorder = Recorder(device_id=default_mic_device)
+            dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.ERROR, Gtk.ButtonsType.OK, 'Cannot use this device')
+            dialog.format_secondary_text('Could not use device with ID {}. This is likely due to a saved configuration '
+                                         'that is no longer available '
+                                         '(e.g. you used a device that is not plugged anymore)\n\n'
+                                         'Using default mic with ID {} now'.format(mic_id, default_mic_device))
+            dialog.run()
+            dialog.destroy()
+            self.settings.update_settings(microphone=default_mic_device)
+
+        return recorder
 
     def rec_reader_proc(self, queue):
         while True:
@@ -309,6 +324,8 @@ class EpicNarrator(Gtk.ApplicationWindow):
             if self.hold_to_record:
                 if self.recorder.is_recording:
                     self.stop_recording()
+            else:
+                self.toggle_record()
         else:
             return True
 
@@ -328,8 +345,6 @@ class EpicNarrator(Gtk.ApplicationWindow):
             if self.hold_to_record:
                 if not self.recorder.is_recording:
                     self.start_recording()
-            else:
-                self.toggle_record()
         elif event.keyval == Gdk.KEY_Delete or event.keyval == Gdk.KEY_BackSpace:
             if self.recordings.empty():
                 pass
