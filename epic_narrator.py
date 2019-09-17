@@ -529,7 +529,6 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
         for dev_idx, dev in enumerate(devices):
             dev_name = dev['name']
-
             mic_item = Gtk.RadioMenuItem(label=dev_name, group=mic_item)
             mic_item.connect('activate', self.microphone_selected, dev_idx)
 
@@ -540,13 +539,16 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
         self.menu_bar.append(self.mic_menu_item)
 
-    def microphone_selected(self, mic_item, index):
+    def microphone_selected(self, mic_item, mic_id):
         try:
-            self.recorder.change_device(index)
-            self.recorder.stream.start()  # starts the microphone stream
+            if self.ui_ready and mic_id != self.recorder.device_id:
+                # second condition to prevent the mic to be set twice (which unfortunately happen)
+                if self.recorder.is_recording:
+                    self.stop_recording()
 
-            if self.ui_ready:
-                self.settings.update_settings(microphone=index)
+                self.recorder.change_device(mic_id)
+                self.recorder.stream.start()  # starts the microphone stream
+                self.settings.update_settings(microphone=mic_id)
         except Exception as e:
             traceback.print_exc()
             dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.ERROR, Gtk.ButtonsType.OK, 'Cannot use this device')

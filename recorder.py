@@ -44,19 +44,20 @@ class Recorder:
 
     def close_stream(self):
         if self.is_recording:
-            self.stop_recording()
+            self.stop_recording()  # this will wait for any open files to be closed
 
         self.stream.close(ignore_errors=True)
 
     def start_recording(self, filename):
         self.is_recording = True
-
         self.current_file = sf.SoundFile(filename, mode='w', samplerate=int(self.sample_rate),
                                          channels=len(self.channels))
         
     def stop_recording(self):
         self.is_recording = False
-        self.current_file.close()
+
+        while self.current_file is not None and not self.current_file.closed:
+            continue  # waiting for file to be closed
 
     def prepare_monitor_fig(self):
         plt.style.use('dark_background')
@@ -96,13 +97,17 @@ class Recorder:
 
     def audio_callback(self, indata, frames, time, status):
         """This is called (from a separate thread) for each audio block."""
-        if status:
-            print(status, file=sys.stderr)
+
         # Fancy indexing with mapping creates a (necessary!) copy:
         self.q.put(indata[::self.downsample, self.mapping])
 
-        if self.is_recording and self.current_file is not None and not self.current_file.closed:
+        if self.current_file is None or self.current_file.closed:
+            return
+
+        if self.is_recording:
             self.current_file.buffer_write(indata, dtype='float32')
+        else:
+            self.current_file.close()
 
     def start_monitor(self):
         with self.stream:
