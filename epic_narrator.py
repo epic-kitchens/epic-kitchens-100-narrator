@@ -1,3 +1,4 @@
+import faulthandler
 import os
 import queue
 import sys
@@ -951,6 +952,8 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
 
 if __name__ == '__main__':
+    faulthandler.enable()
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--query_audio_devices', action='store_true',
                         help='Print the audio devices available in your system')

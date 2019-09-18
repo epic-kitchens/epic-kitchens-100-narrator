@@ -1,4 +1,5 @@
 import sys
+import time
 
 from matplotlib.animation import FuncAnimation
 import matplotlib.pyplot as plt
@@ -55,9 +56,10 @@ class Recorder:
         
     def stop_recording(self):
         self.is_recording = False
+        self.current_file.close()
 
-        while self.current_file is not None and not self.current_file.closed:
-            continue  # waiting for file to be closed
+        # while self.current_file is not None and not self.current_file.closed:
+        #    time.sleep(0.01)  # waiting for file to be closed
 
     def prepare_monitor_fig(self):
         plt.style.use('dark_background')
@@ -106,8 +108,6 @@ class Recorder:
 
         if self.is_recording:
             self.current_file.buffer_write(indata, dtype='float32')
-        else:
-            self.current_file.close()
 
     def start_monitor(self):
         with self.stream:
