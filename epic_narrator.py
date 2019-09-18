@@ -1,4 +1,5 @@
 import faulthandler
+import logging
 import os
 import queue
 import sys
@@ -22,12 +23,40 @@ gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, GLib, Gdk, Pango
 from matplotlib.animation import FuncAnimation
 from matplotlib.backends.backend_gtk3agg import (FigureCanvasGTK3Agg as FigureCanvas)
-from threading import Thread, Event, Timer
+from threading import Thread, Event
 
 if sys.platform.startswith('darwin'):
     plt.switch_backend('MacOSX')
 else:
     plt.switch_backend('GTK3Agg')
+
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__name__))
+LOG = logging.getLogger('epic_narrator')
+
+parser = argparse.ArgumentParser(
+        description="EPIC Narrator",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+)
+parser.add_argument(
+        '--query-audio-devices',
+        '--query_audio_devices',
+        action='store_true',
+        help='Print the audio devices available in your system'
+)
+parser.add_argument(
+        '--set-audio-device',
+        '--set_audio_device',
+        type=int, default=0,
+        help='Set audio device to be used for recording, given the device id. '
+             'Use `--query_audio_devices` to get the devices available in your system '
+             'with their corresponding ids')
+parser.add_argument('--verbosity',
+                    default='info',
+                    choices=['debug', 'info', 'warning', 'error', 'critical'],
+                    help="Logging verbosity, one of 'debug', 'info', 'warning', "
+                         "'error', 'critical'.")
+parser.add_argument('--log-file', type=str, help='Path to log file.')
 
 
 class EpicNarrator(Gtk.ApplicationWindow):
@@ -951,19 +980,23 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self.play_video()  # we need to play the video for a while to get the length in milliseconds,
 
 
-if __name__ == '__main__':
-    faulthandler.enable()
+def get_git_commit_hash():
+    import subprocess
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--query_audio_devices', action='store_true',
-                        help='Print the audio devices available in your system')
-    parser.add_argument('--set_audio_device', type=int, default=0,
-                        help='Set audio device to be used for recording, given the device id. '
-                             'Use `--query_audio_devices` to get the devices available in your system with their '
-                             'corresponding ids')
+    try:
+        output = subprocess.run(['git', 'rev-parse', '--short', 'HEAD'], cwd=SCRIPT_DIR,
+                                check=True,
+                                stdout=subprocess.PIPE)
+        return output.stdout.decode('utf-8').strip()
+    except subprocess.CalledProcessError:
+        return None
 
-    args = parser.parse_args()
 
+def main(args):
+    setup_logging(args)
+    commit_hash = get_git_commit_hash()
+    LOG.info("Starting the EPIC-narrator" +
+             (" ({})".format(commit_hash) if commit_hash is not None else ""))
     if args.query_audio_devices:
         print(Recorder.get_devices())
         exit()
@@ -973,3 +1006,19 @@ if __name__ == '__main__':
     Gtk.main()
     narrator.player.stop()
     narrator.vlc_instance.release()
+
+
+def setup_logging(args):
+    log_level = getattr(logging, args.verbosity.upper())
+    if args.log_file is not None:
+        logging.basicConfig(filename=args.log_file)
+    else:
+        logging.basicConfig()
+    LOG.setLevel(log_level)
+
+
+if __name__ == '__main__':
+    faulthandler.enable()
+
+    main(parser.parse_args())
+

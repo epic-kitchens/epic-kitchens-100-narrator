@@ -1,5 +1,4 @@
-import sys
-import time
+import logging
 
 from matplotlib.animation import FuncAnimation
 import matplotlib.pyplot as plt
@@ -9,9 +8,12 @@ import queue
 import matplotlib as mpl
 import soundfile as sf
 
+LOG = logging.getLogger('epic_narrator.recorder')
+
 
 class Recorder:
     def __init__(self, channels=[1], device_id=0, window=200, downsample=10, plot_interval_ms=30, set_plot=False):
+        LOG.info("Creating recorder for device id {}".format(device_id))
         self.mapping = [c - 1 for c in channels]  # Channel numbers start with 1
         self.q = queue.Queue()
         self.channels = channels
@@ -38,6 +40,7 @@ class Recorder:
             self.monitor_animation = None
 
     def change_device(self, device_id):
+        LOG.info("Changing recorder device to {}".format(device_id))
         self.close_stream()
         self.device_id = device_id
         self.stream = sd.InputStream(device=self.device_id, channels=max(self.channels),
@@ -50,12 +53,15 @@ class Recorder:
         self.stream.close(ignore_errors=True)
 
     def start_recording(self, filename):
+        LOG.info("Starting new recording, saving to {}".format(filename))
         self.is_recording = True
         self.current_file = sf.SoundFile(filename, mode='w', samplerate=int(self.sample_rate),
                                          channels=len(self.channels))
         
     def stop_recording(self):
+        LOG.info("Stopping recording, saved to {}".format(self.current_file.name))
         self.is_recording = False
+        LOG.debug("Closing {}".format(self.current_file.name))
         self.current_file.close()
 
         # while self.current_file is not None and not self.current_file.closed:
