@@ -2,6 +2,7 @@ import os
 import queue
 import sys
 import ctypes
+import time
 import traceback
 import argparse
 import vlc
@@ -649,11 +650,9 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self.set_monitor_label(False)
 
         if not self.hold_to_record:
-            timer = Timer(0.5, self.stop_recording_proc, kwargs={'play_afterwards': play_afterwards})
-            timer.start()
-            timer.join()
-        else:
-            self.stop_recording_proc()
+            time.sleep(0.5)
+
+        self.stop_recording_proc()
 
         if play_afterwards:
             self.play_video(None)
