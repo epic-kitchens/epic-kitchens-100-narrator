@@ -314,11 +314,14 @@ class EpicNarrator(Gtk.ApplicationWindow):
         return recorder
 
     def rec_reader_proc(self, queue):
+        log = logging.getLogger("epic_narrator.recorder_reader")
         while True:
             if not self.rec_playing_event.is_set():
+                log.info("Waiting for recording")
                 self.rec_playing_event.wait()
 
             time_ms = queue.get()
+            log.info("Got recording")
             self.play_recording(None, None, time_ms)
 
     def play_recs_with_video_toggled(self, widget):
@@ -491,6 +494,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self.highlighed_recording_time = time_ms
 
     def play_recording(self, widget, event, time_ms):
+        LOG.info("Playing recording at {}ms".format(time_ms))
         recording_path = self.recordings.get_path_for_recording(time_ms)
 
         if recording_path is not None:
@@ -680,6 +684,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self.set_monitor_label(False)
 
         if not self.hold_to_record:
+            LOG.debug("Waiting for mic button to be released")
             time.sleep(0.5)
 
         self.stop_recording_proc()
