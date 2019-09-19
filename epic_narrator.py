@@ -662,6 +662,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         return self.monitor_lines
 
     def record_button_clicked(self, *args):
+        LOG.info("Record button pressed")
         if self.hold_to_record:
             if not self.recorder.is_recording:
                 self.start_recording()
@@ -669,17 +670,20 @@ class EpicNarrator(Gtk.ApplicationWindow):
             self.toggle_record()
 
     def record_button_released(self, *args):
+        LOG.info("Record button released")
         if self.hold_to_record:
             if self.recorder.is_recording:
                 self.stop_recording()
 
     def toggle_record(self, *args):
+        LOG.info("Toggle recording")
         if not self.recorder.is_recording:
             self.start_recording()
         else:
             self.stop_recording()
 
     def stop_recording(self, play_afterwards=True):
+        LOG.info("Stop recording")
         self.record_button.set_image(self.mic_image)
         self.set_monitor_label(False)
 
@@ -722,6 +726,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self.playback_button.set_sensitive(active)
 
     def seek_backwards_pressed(self, *args):
+        LOG.info("Seek backwards pressed")
         if self.is_seeking or self._timeout_id_backwards != 0 or self._timeout_id_forwards != 0:
             return
 
@@ -738,6 +743,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self._timeout_id_backwards = GLib.timeout_add(timeout, self.seek_backwards)
 
     def seek_backwards_released(self, *args):
+        LOG.info("Seek backwards released")
         # remove timeout
         GLib.source_remove(self._timeout_id_backwards)
         self._timeout_id_backwards = 0
@@ -758,6 +764,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         return True  # this will be called inside a timeout so we return True
 
     def seek_forwards_pressed(self, *args):
+        LOG.info("Seek forwards pressed")
         if self.is_seeking or self._timeout_id_backwards != 0 or self._timeout_id_forwards != 0:
             return
 
@@ -774,6 +781,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self._timeout_id_forwards = GLib.timeout_add(timeout, self.seek_forwards)
 
     def seek_forwards_released(self, *args):
+        LOG.info("Seek forwards released")
         # remove timeout
         GLib.source_remove(self._timeout_id_forwards)
         self._timeout_id_forwards = 0
@@ -794,24 +802,29 @@ class EpicNarrator(Gtk.ApplicationWindow):
         return True  # this will be called inside a timeout so we return True
 
     def slider_clicked(self, *args):
+        LOG.info("Slider clicked")
         self.is_seeking = True
 
     def slider_released(self, *args):
+        LOG.info("Slider released")
         slider_pos_ms = int(self.slider.get_value())
         self.player.set_time(slider_pos_ms)
         self.is_seeking = False
 
     def pause_video(self, *args):
+        LOG.info("Pause video")
         self.player.pause()
         self.playback_button.set_image(self.play_image)
         self.last_played_rec = None
 
     def play_video(self, *args):
+        LOG.info("Play video")
         self.player.play()
         self.playback_button.set_image(self.pause_image)
         self.last_played_rec = None
 
     def toggle_player_playback(self, *args):
+        LOG.info("Toggle playback")
         if self.player.is_playing():
             self.pause_video(args)
         else:
@@ -819,16 +832,19 @@ class EpicNarrator(Gtk.ApplicationWindow):
             self.play_video(args)
 
     def mute_video(self):
+        LOG.info("Mute video")
         #if not self.player.audio_get_mute():
         self.mute_button.set_image(self.unmute_image)
         self.player.audio_set_mute(True)
 
     def unmute_video(self):
+        LOG.info("Unmute video")
         #if self.player.audio_get_mute():
         self.mute_button.set_image(self.mute_image)
         self.player.audio_set_mute(False)
 
     def toggle_audio(self, *args):
+        LOG.info("Toggle audio")
         if self.player.audio_get_mute():
             self.unmute_video()
         else:
@@ -868,6 +884,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
                 self.rec_queue.put(rec)
 
     def slider_moved(self, *args):
+        LOG.info("Slider moved")
         # this is called when is moved by the user
         if self.video_length_ms == 0:
             return False  # just to make sure we don't move the slider before we get the video duration
