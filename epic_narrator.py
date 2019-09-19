@@ -36,16 +36,17 @@ class EpicNarrator(Gtk.ApplicationWindow):
         gtk_settings = Gtk.Settings.get_default()
         gtk_settings.set_property("gtk-application-prefer-dark-theme", False)
 
-        self.ui_ready = False
+        self.is_ui_ready = False
         self.settings = Settings()
         self.player = None
+        self.vlc_instance = None
         self.rec_player = None
         self.video_length_ms = 0
         self.seek_step = 500  # 500ms
         self.red_tick_colour = "#ff3300"
         self.video_width = 900
         self.video_height = 400
-        self.connect('destroy', Gtk.main_quit)
+        self.connect('destroy', self.shutting_down)
 
         self.recorder = self.set_mic(mic_device)
         hold_to_record = self.settings.get_setting('hold_to_record')
@@ -63,6 +64,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self.was_playing_before_seek = None
         self.is_seeking = False
         self.play_recs_with_video = False
+        self.is_shutting_down = False
 
         # menu
         self.file_menu = Gtk.Menu()
@@ -141,12 +143,18 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
         self.speed_time_box.pack_start(Gtk.Label(label='Playback speed'), False, False, 10)
 
+        saved_playback_speed = self.settings.get_setting('playback_speed')
+
+        if saved_playback_speed is None:
+            self.settings.update_settings(playback_speed=1)
+            saved_playback_speed = 1
+
         for speed in speeds:
             speed_item = Gtk.RadioButton(label='{:0.2f}'.format(speed), group=speed_item)
             speed_item.connect('clicked', self.speed_selected, speed)
             speed_item.set_can_focus(False)
 
-            if speed == 1:
+            if speed == saved_playback_speed:
                 speed_item.set_active(True)
                 self.normal_speed_button = speed_item
 
@@ -263,7 +271,23 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self.rec_playing_event.clear()
         self.rec_worker.start()
         self.last_played_rec = None
-        self.ui_ready = True
+        self.is_ui_ready = True
+
+    def shutting_down(self, *args):
+        self.is_shutting_down = True
+
+        if self.is_video_loaded:
+            self.settings.update_settings(last_video_position=self.player.get_time())
+
+        Gtk.main_quit()
+
+    def load_last_video(self, *args):
+        # loading last video if saved
+        last_video = self.settings.get_setting('last_video')
+
+        if last_video is not None and os.path.exists(last_video):
+            last_video_position = self.settings.get_setting('last_video_position')
+            self.setup(last_video, ask_output_folder=False, last_video_position=last_video_position)
 
     def set_mic(self, default_mic_device):
         saved_microphone = self.settings.get_setting('microphone')
@@ -286,6 +310,9 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
     def rec_reader_proc(self, queue):
         while True:
+            if self.is_shutting_down:
+                break
+
             if not self.rec_playing_event.is_set():
                 self.rec_playing_event.wait()
 
@@ -305,6 +332,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
     def speed_selected(self, widget, speed):
         if self.is_video_loaded:
             self.player.set_rate(speed)
+            self.settings.update_settings(playback_speed=speed)
 
     def set_focus(self):
         widgets = [self.main_box, self.slider, self.video_box, self.button_box,
@@ -419,6 +447,9 @@ class EpicNarrator(Gtk.ApplicationWindow):
         return box
 
     def go_to(self, widget, event, time_ms):
+        if time_ms < 0 or time_ms > self.video_length_ms:
+            return
+
         self.slider.set_value(time_ms)
         self.player.set_time(int(time_ms))
         self.update_time_label(time_ms)
@@ -543,7 +574,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
     def microphone_selected(self, mic_item, mic_id):
         try:
-            if self.ui_ready and mic_id != self.recorder.device_id:
+            if self.is_ui_ready and mic_id != self.recorder.device_id:
                 # second condition to prevent the mic to be set twice (which unfortunately happen)
                 if self.recorder.is_recording:
                     self.stop_recording()
@@ -806,7 +837,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         time_txt = ' {} / {} '.format(ms_str, total_length_str)
         self.time_label.set_markup('<span bgcolor="black" fgcolor="white"><tt>{}</tt></span>'.format(time_txt))
 
-    def video_loaded(self, *args):
+    def video_loaded(self, last_video_position):
         # we need to play the video for a while to get the length in milliseconds,
         # so this will be called at the beginning
         self.video_length_ms = self.player.get_length()
@@ -816,6 +847,11 @@ class EpicNarrator(Gtk.ApplicationWindow):
             # self.add_start_end_slider_ticks()
             self.rec_playing_event.set()
             self.pause_video()
+            self.is_video_loaded = True
+
+            if last_video_position is not None:
+                self.go_to(None, None, last_video_position)
+
             return False  # video has loaded, will not call this again
         else:
             return True  # video not loaded yet, will try again later
@@ -894,6 +930,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
     def video_area_ready(self, widget):
         self.setup_vlc_player(widget)
+        self.load_last_video()
 
     def choose_output_folder(self, default_output):
         dialog = Gtk.FileChooserDialog("Select output folder", self, action=Gtk.FileChooserAction.SELECT_FOLDER,
@@ -910,7 +947,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self.video_path_label.set_text(self.video_path)
         self.recordings_path_label.set_text(self.recordings.video_annotations_folder)
 
-    def setup(self, video_path):
+    def setup(self, video_path, ask_output_folder=True, last_video_position=None):
         self.video_path = video_path
         media = self.vlc_instance.media_new_path(self.video_path)
         self.player.set_mrl(media.get_mrl())
@@ -918,13 +955,19 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self.toggle_media_controls(True)
         self.record_button.set_sensitive(True)
         self.mute_button.set_sensitive(True)
-        self.is_video_loaded = True
+        self.is_video_loaded = False
         self.mute_video()
 
         video_folder = os.path.dirname(video_path)
         saved_output = self.settings.get_setting('output_path')
         suggested_folder = saved_output if saved_output is not None and os.path.exists(saved_output) else video_folder
-        output_path = self.choose_output_folder(suggested_folder)
+
+        if ask_output_folder or saved_output is None or not os.path.exists(saved_output):
+            output_path = self.choose_output_folder(suggested_folder)
+        else:
+            output_path = saved_output
+
+        self.settings.update_settings(last_video=video_path)
         self.settings.update_settings(video_folder=video_folder, output_path=output_path)
 
         if self.recordings is not None:
@@ -936,7 +979,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
         self.recordings = Recordings(output_path, self.video_path)
 
-        GLib.timeout_add(50, self.video_loaded)  # we need to play the video to get the time
+        GLib.timeout_add(50, self.video_loaded, last_video_position)  # we need to play the video to get the time
 
         if self.recordings.annotations_exist():
             self.recordings.load_annotations()
@@ -971,5 +1014,6 @@ if __name__ == '__main__':
     narrator = EpicNarrator(mic_device=args.set_audio_device)
     narrator.show()
     Gtk.main()
+    narrator.is_shutting_down = True
     narrator.player.stop()
     narrator.vlc_instance.release()

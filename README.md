@@ -37,6 +37,12 @@ If you experience choppy playback on Linux your VLC is probably not decoding the
 
 Try to install `libva1, libva-{mesa,vdpau}-driver` to fix this issue. More on this [here](https://wiki.archlinux.org/index.php/Hardware_video_acceleration)
 
+##### Invisible icons/checkboxes
+
+If you don't see some icons or checkboxes, 
+try to install the package [`adwaita-icon-theme-full`](https://packages.ubuntu.com/xenial/gnome/adwaita-icon-theme-full)
+via `apt` or your distribution's package manager.
+
 ### Mac OS
 
 Use [brew](https://brew.sh/) and pip to install the dependencies. 
@@ -51,7 +57,6 @@ python3 -m pip install matplotlib python-vlc sounddevice soundfile PyYAML
 ```
 
 Bear in mind that the `brew` installation might take a while.
-
 
 ## Usage
 
