@@ -5,11 +5,11 @@ import bisect
 
 
 class Recordings:
-    def __init__(self, base_folder, video_path, audio_extension='wav'):
-        self.base_folder = os.path.join(base_folder, 'epic_narrator_recordings')
+    def __init__(self, output_parent, video_path, audio_extension='wav'):
+        self.base_folder = Recordings.get_recordings_path(output_parent)
         self.video_path = video_path
-        self.video_name = os.path.splitext(os.path.basename(self.video_path))[0]
-        self.video_annotations_folder = os.path.join(self.base_folder, self.video_name)
+        self.video_annotations_folder = Recordings.get_recordings_path_for_video(self.base_folder, self.video_path,
+                                                                                 from_parent_folder=False)
         self.audio_extension = audio_extension
         self._recordings = {}
         self._recording_times = []
@@ -86,6 +86,21 @@ class Recordings:
 
     def recording_exists(self, time_ms):
         return time_ms in self._recordings
+
+    @staticmethod
+    def get_recordings_path(output_parent):
+        return os.path.join(output_parent, 'epic_narrator_recordings')
+
+    @staticmethod
+    def get_recordings_path_for_video(output_path, video_path, from_parent_folder=True):
+        video_name = os.path.splitext(os.path.basename(video_path))[0]
+
+        if from_parent_folder is True:
+            base_folder = Recordings.get_recordings_path(output_path)
+        else:
+            base_folder = output_path
+
+        return os.path.join(base_folder, video_name)
 
 
 def ms_to_timestamp(millis):

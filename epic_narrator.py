@@ -960,9 +960,11 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
         video_folder = os.path.dirname(video_path)
         saved_output = self.settings.get_setting('output_path')
-        suggested_folder = saved_output if saved_output is not None and os.path.exists(saved_output) else video_folder
 
-        if ask_output_folder or saved_output is None or not os.path.exists(saved_output):
+        if ask_output_folder or \
+                (saved_output is None or
+                 not os.path.exists(Recordings.get_recordings_path_for_video(saved_output, video_path))):
+            suggested_folder = saved_output if saved_output is not None and os.path.exists(saved_output) else video_folder
             output_path = self.choose_output_folder(suggested_folder)
         else:
             output_path = saved_output
