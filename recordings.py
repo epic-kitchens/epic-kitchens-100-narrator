@@ -1,7 +1,10 @@
 import glob
+import logging
 import math
 import os
 import bisect
+
+LOG = logging.getLogger('epic_narrator.recordings')
 
 
 class Recordings:
@@ -16,6 +19,7 @@ class Recordings:
         os.makedirs(self.video_annotations_folder, exist_ok=True)
 
     def add_recording(self, time):
+        LOG.info("Adding recording at {!r}".format(time))
         os.makedirs(self.video_annotations_folder, exist_ok=True)
         path = os.path.join(self.video_annotations_folder, '{}.{}'.format(time, self.audio_extension))
         self._recordings[time] = path
@@ -24,7 +28,10 @@ class Recordings:
 
     def delete_recording(self, time):
         if time in self._recordings:
-            os.remove(self._recordings[time])
+            LOG.info("Deleting recording at {!r}".format(time))
+            filepath = self._recordings[time]
+            os.remove(filepath)
+            LOG.info("Deleted recording {}".format(filepath))
             del self._recordings[time]
             self._recording_times.remove(time)  # no need to sort when we delete
 
@@ -32,13 +39,18 @@ class Recordings:
         self.delete_recording(self._recording_times[-1])
 
     def scan_folder(self):
-        return glob.glob(os.path.join(self.video_annotations_folder, '*.{}'.format(self.audio_extension)))
+        LOG.info("Scanning {} for audio files".format(self.video_annotations_folder))
+        audio_files = glob.glob(os.path.join(self.video_annotations_folder,
+                                            '*.{}'.format(self.audio_extension)))
+        LOG.info("Found {} existing recordings".format(len(audio_files)))
+        return audio_files
 
     def annotations_exist(self):
         return os.path.exists(self.video_annotations_folder) and len(self.scan_folder()) > 0
 
     def load_annotations(self):
         for f in self.scan_folder():
+            LOG.debug("Loading recording {}".format(f))
             time_ms = int(os.path.splitext(os.path.basename(f))[0])
             self._recordings[time_ms] = f
             bisect.insort(self._recording_times, time_ms)

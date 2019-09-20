@@ -1,4 +1,5 @@
 import faulthandler
+import logging
 import os
 import queue
 import sys
@@ -22,12 +23,40 @@ gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, GLib, Gdk, Pango
 from matplotlib.animation import FuncAnimation
 from matplotlib.backends.backend_gtk3agg import (FigureCanvasGTK3Agg as FigureCanvas)
-from threading import Thread, Event, Timer
+from threading import Thread, Event
 
 if sys.platform.startswith('darwin'):
     plt.switch_backend('MacOSX')
 else:
     plt.switch_backend('GTK3Agg')
+
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__name__))
+LOG = logging.getLogger('epic_narrator')
+
+parser = argparse.ArgumentParser(
+        description="EPIC Narrator",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+)
+parser.add_argument(
+        '--query-audio-devices',
+        '--query_audio_devices',
+        action='store_true',
+        help='Print the audio devices available in your system'
+)
+parser.add_argument(
+        '--set-audio-device',
+        '--set_audio_device',
+        type=int, default=0,
+        help='Set audio device to be used for recording, given the device id. '
+             'Use `--query_audio_devices` to get the devices available in your system '
+             'with their corresponding ids')
+parser.add_argument('--verbosity',
+                    default='info',
+                    choices=['debug', 'info', 'warning', 'error', 'critical'],
+                    help="Logging verbosity, one of 'debug', 'info', 'warning', "
+                         "'error', 'critical'.")
+parser.add_argument('--log-file', type=str, help='Path to log file.')
 
 
 class EpicNarrator(Gtk.ApplicationWindow):
@@ -309,14 +338,17 @@ class EpicNarrator(Gtk.ApplicationWindow):
         return recorder
 
     def rec_reader_proc(self, queue):
+        log = logging.getLogger("epic_narrator.recorder_reader")
         while True:
             if self.is_shutting_down:
                 break
 
             if not self.rec_playing_event.is_set():
+                log.info("Waiting for recording")
                 self.rec_playing_event.wait()
 
             time_ms = queue.get()
+            log.info("Got recording")
             self.play_recording(None, None, time_ms)
 
     def play_recs_with_video_toggled(self, widget):
@@ -493,6 +525,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self.highlighed_recording_time = time_ms
 
     def play_recording(self, widget, event, time_ms):
+        LOG.info("Playing recording at {}ms".format(time_ms))
         recording_path = self.recordings.get_path_for_recording(time_ms)
 
         if recording_path is not None:
@@ -660,6 +693,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         return self.monitor_lines
 
     def record_button_clicked(self, *args):
+        LOG.info("Record button pressed")
         if self.hold_to_record:
             if not self.recorder.is_recording:
                 self.start_recording()
@@ -667,21 +701,25 @@ class EpicNarrator(Gtk.ApplicationWindow):
             self.toggle_record()
 
     def record_button_released(self, *args):
+        LOG.info("Record button released")
         if self.hold_to_record:
             if self.recorder.is_recording:
                 self.stop_recording()
 
     def toggle_record(self, *args):
+        LOG.info("Toggle recording")
         if not self.recorder.is_recording:
             self.start_recording()
         else:
             self.stop_recording()
 
     def stop_recording(self, play_afterwards=True):
+        LOG.info("Stop recording")
         self.record_button.set_image(self.mic_image)
         self.set_monitor_label(False)
 
         if not self.hold_to_record:
+            LOG.debug("Waiting for mic button to be released")
             time.sleep(0.5)
 
         self.stop_recording_proc()
@@ -719,6 +757,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self.playback_button.set_sensitive(active)
 
     def seek_backwards_pressed(self, *args):
+        LOG.info("Seek backwards pressed")
         if self.is_seeking or self._timeout_id_backwards != 0 or self._timeout_id_forwards != 0:
             return
 
@@ -735,6 +774,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self._timeout_id_backwards = GLib.timeout_add(timeout, self.seek_backwards)
 
     def seek_backwards_released(self, *args):
+        LOG.info("Seek backwards released")
         # remove timeout
         GLib.source_remove(self._timeout_id_backwards)
         self._timeout_id_backwards = 0
@@ -755,6 +795,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         return True  # this will be called inside a timeout so we return True
 
     def seek_forwards_pressed(self, *args):
+        LOG.info("Seek forwards pressed")
         if self.is_seeking or self._timeout_id_backwards != 0 or self._timeout_id_forwards != 0:
             return
 
@@ -771,6 +812,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self._timeout_id_forwards = GLib.timeout_add(timeout, self.seek_forwards)
 
     def seek_forwards_released(self, *args):
+        LOG.info("Seek forwards released")
         # remove timeout
         GLib.source_remove(self._timeout_id_forwards)
         self._timeout_id_forwards = 0
@@ -791,24 +833,29 @@ class EpicNarrator(Gtk.ApplicationWindow):
         return True  # this will be called inside a timeout so we return True
 
     def slider_clicked(self, *args):
+        LOG.info("Slider clicked")
         self.is_seeking = True
 
     def slider_released(self, *args):
+        LOG.info("Slider released")
         slider_pos_ms = int(self.slider.get_value())
         self.player.set_time(slider_pos_ms)
         self.is_seeking = False
 
     def pause_video(self, *args):
+        LOG.info("Pause video")
         self.player.pause()
         self.playback_button.set_image(self.play_image)
         self.last_played_rec = None
 
     def play_video(self, *args):
+        LOG.info("Play video")
         self.player.play()
         self.playback_button.set_image(self.pause_image)
         self.last_played_rec = None
 
     def toggle_player_playback(self, *args):
+        LOG.info("Toggle playback")
         if self.player.is_playing():
             self.pause_video(args)
         else:
@@ -816,16 +863,19 @@ class EpicNarrator(Gtk.ApplicationWindow):
             self.play_video(args)
 
     def mute_video(self):
+        LOG.info("Mute video")
         #if not self.player.audio_get_mute():
         self.mute_button.set_image(self.unmute_image)
         self.player.audio_set_mute(True)
 
     def unmute_video(self):
+        LOG.info("Unmute video")
         #if self.player.audio_get_mute():
         self.mute_button.set_image(self.mute_image)
         self.player.audio_set_mute(False)
 
     def toggle_audio(self, *args):
+        LOG.info("Toggle audio")
         if self.player.audio_get_mute():
             self.unmute_video()
         else:
@@ -870,6 +920,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
                 self.rec_queue.put(rec)
 
     def slider_moved(self, *args):
+        LOG.info("Slider moved")
         # this is called when is moved by the user
         if self.video_length_ms == 0:
             return False  # just to make sure we don't move the slider before we get the video duration
@@ -996,19 +1047,23 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self.play_video()  # we need to play the video for a while to get the length in milliseconds,
 
 
-if __name__ == '__main__':
-    faulthandler.enable()
+def get_git_commit_hash():
+    import subprocess
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--query_audio_devices', action='store_true',
-                        help='Print the audio devices available in your system')
-    parser.add_argument('--set_audio_device', type=int, default=0,
-                        help='Set audio device to be used for recording, given the device id. '
-                             'Use `--query_audio_devices` to get the devices available in your system with their '
-                             'corresponding ids')
+    try:
+        output = subprocess.run(['git', 'rev-parse', '--short', 'HEAD'], cwd=SCRIPT_DIR,
+                                check=True,
+                                stdout=subprocess.PIPE)
+        return output.stdout.decode('utf-8').strip()
+    except subprocess.CalledProcessError:
+        return None
 
-    args = parser.parse_args()
 
+def main(args):
+    setup_logging(args)
+    commit_hash = get_git_commit_hash()
+    LOG.info("Starting the EPIC-narrator" +
+             (" ({})".format(commit_hash) if commit_hash is not None else ""))
     if args.query_audio_devices:
         print(Recorder.get_devices())
         exit()
@@ -1019,3 +1074,19 @@ if __name__ == '__main__':
     narrator.is_shutting_down = True
     narrator.player.stop()
     narrator.vlc_instance.release()
+
+
+def setup_logging(args):
+    log_level = getattr(logging, args.verbosity.upper())
+    if args.log_file is not None:
+        logging.basicConfig(filename=args.log_file)
+    else:
+        logging.basicConfig()
+    LOG.setLevel(log_level)
+
+
+if __name__ == '__main__':
+    faulthandler.enable()
+
+    main(parser.parse_args())
+
