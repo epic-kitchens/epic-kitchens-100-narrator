@@ -16,6 +16,7 @@ class Recordings:
         self.audio_extension = audio_extension
         self._recordings = {}
         self._recording_times = []
+        self._highlighted_rec_index = None
         os.makedirs(self.video_annotations_folder, exist_ok=True)
 
     def add_recording(self, time):
@@ -98,6 +99,38 @@ class Recordings:
 
     def recording_exists(self, time_ms):
         return time_ms in self._recordings
+
+    def _set_currently_highlighted_recording_from_time(self, time):
+        closest = self.get_closest_recording(time, neighbourhood=None)
+
+        if closest is not None:
+            self._highlighted_rec_index = self._recording_times.index(closest)
+
+    def _set_currently_highlighted_recording_from_index(self, rec_index):
+        if 0 <= rec_index < len(self._recording_times):
+            self._highlighted_rec_index = rec_index
+
+    def get_next_from_highlighted(self, time, neighbourhood=1000):
+        if self._highlighted_rec_index is None:
+            self._set_currently_highlighted_recording_from_time(time)
+
+        if self._highlighted_rec_index is not None and self._highlighted_rec_index + 1 < len(self._recording_times):
+            next = self._recording_times[self._highlighted_rec_index+1]
+            dist = next - time
+
+            if 0 < dist <= neighbourhood:
+                return next
+            else:
+                return None
+        else:
+            return None
+
+    def move_highlighted_next(self):
+        if self._highlighted_rec_index is not None and self._highlighted_rec_index + 1 < len(self._recording_times):
+            self._highlighted_rec_index += 1
+
+    def reset_highlighted(self):
+        self._highlighted_rec_index = None
 
     @staticmethod
     def get_recordings_path(output_parent):

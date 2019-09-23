@@ -494,7 +494,11 @@ class EpicNarrator(Gtk.ApplicationWindow):
         adj.set_value(adj.get_upper())
 
     def scroll_annotations_box_to_time(self, time_ms):
-        rec = self.recordings.get_closest_recording(time_ms)
+        if self.is_seeking:
+            rec = self.recordings.get_closest_recording(time_ms)
+        else:
+            rec = self.recordings.get_next_from_highlighted(time_ms)
+
         box = self.annotation_box_map[rec] if rec in self.annotation_box_map else None
 
         if box is not None:
@@ -502,6 +506,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
             _, y = self.annotation_box.translate_coordinates(box, 0, 0)
             adj.set_value(abs(y))
             self.highlight_recording_annotation(box, rec)
+            self.recordings.move_highlighted_next()
 
     def reset_highlighted_annotation(self):
         if self.highlighted_recording_button is not None:
@@ -786,6 +791,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
     def seek_backwards(self):
         seek_pos = self.slider.get_value() - self.seek_step
+        self.recordings.reset_highlighted()
 
         if seek_pos >= 1:
             self.is_seeking = True
@@ -824,6 +830,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
     def seek_forwards(self):
         seek_pos = self.slider.get_value() + self.seek_step
+        self.recordings.reset_highlighted()
 
         if seek_pos < self.video_length_ms:
             self.is_seeking = True
@@ -835,6 +842,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
     def slider_clicked(self, *args):
         LOG.info("Slider clicked")
         self.is_seeking = True
+        self.recordings.reset_highlighted()
 
     def slider_released(self, *args):
         LOG.info("Slider released")
