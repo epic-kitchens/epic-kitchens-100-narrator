@@ -555,7 +555,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
         if response == Gtk.ResponseType.OK:
             self.recordings.delete_recording(time_ms)
-            # widget's parent and all its children will be destroyed after the above call
+            # widget's parent and all its children will be destroyed after the below call
             self.remove_annotation_box(widget.get_parent(), time_ms)
             self.refresh_recording_ticks()
 
@@ -571,6 +571,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
     def remove_all_annotation_boxes(self):
         for w in self.annotation_box.get_children():
             self.annotation_box.remove(w)
+            w.destroy()
 
     def refresh_annotation_box(self):
         order = sorted(list(self.annotation_box_map.keys()))
