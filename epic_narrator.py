@@ -555,16 +555,18 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
         if response == Gtk.ResponseType.OK:
             self.recordings.delete_recording(time_ms)
-            self.remove_annotation_box(widget.get_parent())
+            # widget's parent and all its children will be destroyed after the above call
+            self.remove_annotation_box(widget.get_parent(), time_ms)
             self.refresh_recording_ticks()
 
             if time_ms == self.highlighed_recording_time:
                 self.reset_highlighted_annotation()
 
-    def remove_annotation_box(self, widget):
-        self.annotation_box_map = {key: val for key, val in self.annotation_box_map.items() if val != widget}
+    def remove_annotation_box(self, widget, time_ms):
+        del self.annotation_box_map[time_ms]
         self.annotation_box.remove(widget)
         self.refresh_annotation_box()
+        widget.destroy()
 
     def remove_all_annotation_boxes(self):
         for w in self.annotation_box.get_children():
@@ -722,6 +724,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         LOG.info("Stop recording")
         self.record_button.set_image(self.mic_image)
         self.set_monitor_label(False)
+        self.reset_highlighted_annotation()
 
         if not self.hold_to_record:
             LOG.debug("Waiting for mic button to be released")
@@ -852,7 +855,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
     def pause_video(self, *args):
         LOG.info("Pause video")
-        self.player.pause()
+        self.player.set_pause(True)
         self.playback_button.set_image(self.play_image)
         self.last_played_rec = None
 
