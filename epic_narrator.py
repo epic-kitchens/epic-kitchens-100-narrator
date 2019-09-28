@@ -293,12 +293,14 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self.connect("key-release-event", self.key_released)
 
         # queue to play recordings with video
+        '''
         self.rec_queue = UniqueQueue()  # writer() writes to rec_queue from _this_ process
         self.rec_worker = Thread(target=self.rec_reader_proc, args=(self.rec_queue,))
         self.rec_worker.setDaemon(True)
         self.rec_playing_event = Event()
         self.rec_playing_event.clear()
         self.rec_worker.start()
+        '''
         self.last_played_rec = None
         self.is_ui_ready = True
 
@@ -337,6 +339,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
         return recorder
 
+    '''
     def rec_reader_proc(self, queue):
         log = logging.getLogger("epic_narrator.recorder_reader")
         while True:
@@ -350,12 +353,14 @@ class EpicNarrator(Gtk.ApplicationWindow):
             time_ms = queue.get()
             log.info("Got recording")
             self.play_recording(None, None, time_ms)
+    '''
 
     def play_recs_with_video_toggled(self, widget):
         self.play_recs_with_video = self.play_recs_with_video_button.get_active()
 
     def finished_playing_recording(self, args):
-        self.rec_playing_event.set()
+        # self.rec_playing_event.set()
+        self.play_video()
 
     def set_monitor_label(self, is_recording):
         colour = '#ff3300' if is_recording else 'black'
@@ -538,7 +543,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
             self.rec_player.audio_set_mute(False)
             mrl = audio_media.get_mrl()
             self.rec_player.set_mrl(mrl)
-            self.rec_playing_event.clear()
+            # self.rec_playing_event.clear()
             self.rec_player.play()
 
     def delete_recording(self, widget, event, time_ms, current_recording=False):
@@ -858,13 +863,11 @@ class EpicNarrator(Gtk.ApplicationWindow):
         LOG.info("Pause video")
         self.player.set_pause(True)
         self.playback_button.set_image(self.play_image)
-        self.last_played_rec = None
 
     def play_video(self, *args):
         LOG.info("Play video")
         self.player.play()
         self.playback_button.set_image(self.pause_image)
-        self.last_played_rec = None
 
     def toggle_player_playback(self, *args):
         LOG.info("Toggle playback")
@@ -907,7 +910,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         if self.video_length_ms > 0:
             self.slider.set_range(1, self.video_length_ms)
             # self.add_start_end_slider_ticks()
-            self.rec_playing_event.set()
+            # self.rec_playing_event.set()
             self.pause_video()
             self.is_video_loaded = True
 
@@ -926,10 +929,12 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
         if self.play_recs_with_video and not self.is_seeking and self.highlighed_recording_time is not None:
             rec = self.highlighed_recording_time
-            
+
             if rec and rec != self.last_played_rec:
                 self.last_played_rec = rec
-                self.rec_queue.put(rec)
+                # self.rec_queue.put(rec)
+                self.pause_video()
+                self.play_recording(None, None, rec)
 
     def slider_moved(self, *args):
         LOG.info("Slider moved")
