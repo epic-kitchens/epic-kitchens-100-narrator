@@ -1053,7 +1053,12 @@ class EpicNarrator(Gtk.ApplicationWindow):
                 self.add_annotation_box(rec_ms)
                 self.add_time_tick(rec_ms, colour=self.red_tick_colour)
 
-        self.normal_speed_button.set_active(True)  # reset normal speed
+        playback_speed = self.settings.get_setting('playback_speed')
+
+        if playback_speed is not None and type(playback_speed) == float and 0 <= playback_speed <=1:
+            self.player.set_rate(playback_speed)
+
+        # self.normal_speed_button.set_active(True)  # reset normal speed
         self.set_video_recordings_paths_labels()
         self.go_to(None, None, 1)
         self.play_video()  # we need to play the video for a while to get the length in milliseconds,
