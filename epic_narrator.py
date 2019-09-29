@@ -91,6 +91,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self._timeout_id_backwards = 0
         self._timeout_id_forwards = 0
         self.was_playing_before_seek = None
+        self.was_playing_before_playing_rec = False
         self.is_seeking = False
         self.play_recs_with_video = False
         self.is_shutting_down = False
@@ -360,7 +361,9 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
     def finished_playing_recording(self, args):
         # self.rec_playing_event.set()
-        self.play_video()
+        if self.was_playing_before_playing_rec:
+            self.play_video()
+            self.was_playing_before_playing_rec = False
 
     def set_monitor_label(self, is_recording):
         colour = '#ff3300' if is_recording else 'black'
@@ -934,6 +937,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
                 self.last_played_rec = rec
                 # self.rec_queue.put(rec)
                 self.pause_video()
+                self.was_playing_before_playing_rec = True
                 self.play_recording(None, None, rec)
 
     def slider_moved(self, *args):
