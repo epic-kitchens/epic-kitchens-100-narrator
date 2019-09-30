@@ -2,6 +2,7 @@ import faulthandler
 import logging
 import os
 import queue
+import random
 import sys
 import ctypes
 import time
@@ -160,6 +161,10 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self.video_area.set_size_request(self.video_width, self.video_height)
         self.video_area.connect('realize', self.video_area_ready)
 
+        if self.single_window:
+            # self.video_area.connect('configure_event', self.video_area_resized)
+            self.video_area.connect('draw', self.draw_video_area)
+
         # time label
         self.time_label = Gtk.Label()
         self.update_time_label(0)
@@ -304,6 +309,14 @@ class EpicNarrator(Gtk.ApplicationWindow):
         '''
         self.last_played_rec = None
         self.is_ui_ready = True
+
+    def draw_video_area(self, widget, cairo_ctx):
+        # this fixes the broken video area that might happen when resizing the window, depending on the system
+        cairo_ctx.set_source_rgb(0, 0, 0)
+        cairo_ctx.paint()
+
+    def video_area_resized(self, *args):
+        pass
 
     def shutting_down(self, *args):
         self.is_shutting_down = True
@@ -1081,7 +1094,7 @@ def get_git_commit_hash():
                                 check=True,
                                 stdout=subprocess.PIPE)
         return output.stdout.decode('utf-8').strip()
-    except subprocess.CalledProcessError:
+    except Exception:
         return None
 
 
