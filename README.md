@@ -58,6 +58,16 @@ python3 -m pip install matplotlib python-vlc sounddevice soundfile PyYAML
 
 Bear in mind that the `brew` installation might take a while.
 
+If you get the following error
+
+```ERROR: Could not find an activated virtualenv (required)```
+
+Try to export the following variable 
+
+```export PIP_REQUIRE_VIRTUALENV=false```
+
+*before* installing the python dependencies with `pithon3 -m pip` 
+
 ## Usage
 
 Start the program with `python epic_narrator.py`. Once the program has started:
@@ -148,4 +158,5 @@ your input audio interface.
 
 The narrator will save some settings under a directory named `epic_narrator` automatically created in your home directory.
 
-The settings will save the path of the video you narrated last, as well as the output path and the microphone id. 
+The settings will save the path of the video you narrated last, as well as the output path and, the microphone id and a
+few other things. 
