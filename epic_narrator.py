@@ -748,9 +748,9 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self.set_monitor_label(False)
         self.reset_highlighted_annotation()
 
-        if not self.hold_to_record:
-            LOG.debug("Waiting for mic button to be released")
-            time.sleep(0.5)
+        # if not self.hold_to_record:
+        LOG.debug("Waiting for mic button to be released")
+        time.sleep(0.5)
 
         self.stop_recording_proc()
 
