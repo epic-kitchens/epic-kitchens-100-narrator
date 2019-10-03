@@ -1,0 +1,6 @@
+numpy==1.17.2
+matplotlib
+PyYAML==5.1.2
+python-vlc==3.0.6109
+sounddevice==0.3.13
+soundfile==0.10.2

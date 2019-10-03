@@ -1,0 +1,75 @@
+{
+    "app-id": "uk.ac.bris.epic.narrator",
+    "runtime": "org.gnome.Platform",
+    "runtime-version": "3.32",
+    "sdk": "org.gnome.Sdk",
+    "command": "start_narrator.sh",   
+    "modules": [        
+        "python_libs.json",
+        {
+         "name": "python_libs"
+        },
+        "org.videolan.VLC.json",
+        {
+         "name": "vlc-module"
+        },
+        {
+            "name": "portaudio",
+            "sources": [
+                {
+                    "type": "archive",
+                    "url": "http://www.portaudio.com/archives/pa_stable_v190600_20161030.tgz",
+                    "sha256": "f5a21d7dcd6ee84397446fa1fa1a0675bb2e8a4a6dceb4305a8404698d8d1513"
+                }
+            ],
+            "buildsystem": "cmake"            
+        },
+        {
+            "name": "epic_narrator",
+            "buildsystem": "simple",
+            "build-commands": [
+                "install -D start_narrator.sh /app/bin/start_narrator.sh",
+                "install -D epic_narrator.py /app/bin/epic_narrator.py",
+                "install -D recorder.py /app/bin/recorder.py",
+                "install -D recordings.py /app/bin/recordings.py",
+                "install -D settings.py /app/bin/settings.py",
+                "install -D unique_queue.py /app/bin/unique_queue.py"
+            ],
+            "sources": [
+                {
+                    "type": "file",
+                    "path": "../epic_narrator.py"
+                },
+                {
+                    "type": "file",
+                    "path": "../recorder.py"
+                },
+                {
+                    "type": "file",
+                    "path": "../recordings.py"
+                },
+                {
+                    "type": "file",
+                    "path": "../settings.py"
+                },
+                {
+                    "type": "file",
+                    "path": "../unique_queue.py"
+                },
+                {
+                    "type": "file",
+                    "path": "start_narrator.sh"
+                }
+            ]
+        }
+    ],
+    "finish-args": [
+        "--socket=x11",
+        "--share=network",
+        "--socket=fallback-x11",
+        "--share=ipc",
+        "--socket=pulseaudio",
+        "--device=all",
+        "--filesystem=host"
+    ]
+}

@@ -1,0 +1,806 @@
+{
+  "name": "vlc-epic",
+  "buildsystem": "simple",
+  "build-commands": [],
+  "modules": [
+    "libs/vlc/shared-modules/intltool/intltool-0.51.json",
+    "libs/vlc/shared-modules/SDL/SDL-1.2.15.json",
+    "libs/vlc/shared-modules/SDL/SDL_image-1.2.12.json",
+    "libs/vlc/shared-modules/lua5.3/lua-5.3.5.json",
+    "libs/vlc/shared-modules/glu/glu-9.0.0.json",
+    {
+      "name": "libraw1394",
+      "rm-configure": true,
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://www.kernel.org/pub/linux/libs/ieee1394/libraw1394-2.1.2.tar.xz",
+          "sha256": "03ccc69761d22c7deb1127fc301010dd13e70e44bb7134b8ff0d07590259a55e"
+        },
+        {
+          "type": "script",
+          "commands": [
+            "autoreconf -fiv"
+          ],
+          "dest-filename": "autogen.sh"
+        }
+      ]
+    },
+    {
+      "name": "libavc1394",
+      "rm-configure": true,
+      "config-opts": [
+        "--disable-static"
+      ],
+      "sources": [
+        {
+          "type": "archive",
+          "url": "http://http.debian.net/debian/pool/main/liba/libavc1394/libavc1394_0.5.4.orig.tar.gz",
+          "sha256": "7cb1ff09506ae911ca9860bef4af08c2403f3e131f6c913a2cbd6ddca4215b53"
+        },
+        {
+          "type": "script",
+          "commands": [
+            "autoreconf -fiv"
+          ],
+          "dest-filename": "autogen.sh"
+        }
+      ]
+    },
+    {
+      "name": "zvbi",
+      "rm-configure": true,
+      "sources": [
+        {
+          "type": "archive",
+          "url": "http://http.debian.net/debian/pool/main/z/zvbi/zvbi_0.2.35.orig.tar.bz2",
+          "sha256": "fc883c34111a487c4a783f91b1b2bb5610d8d8e58dcba80c7ab31e67e4765318"
+        },
+        {
+          "type": "script",
+          "commands": [
+            "autoreconf -fiv"
+          ],
+          "dest-filename": "autogen.sh"
+        }
+      ]
+    },
+    {
+      "name": "libdc1394",
+      "rm-configure": true,
+      "config-opts": [
+        "--disable-static"
+      ],
+      "sources": [
+        {
+          "type": "archive",
+          "url": "http://http.debian.net/debian/pool/main/libd/libdc1394-22/libdc1394-22_2.2.5.orig.tar.gz",
+          "sha256": "350cc8d08aee5ffc4e1f3049e2e1c2bc6660642d424595157da97ab5b1263337"
+        },
+        {
+          "type": "script",
+          "commands": [
+            "autoreconf -fiv"
+          ],
+          "dest-filename": "autogen.sh"
+        }
+
+      ]
+    },
+    {
+      "name": "libcddb",
+      "rm-configure": true,
+      "sources": [
+        {
+          "type": "archive",
+          "url": "http://distcache.freebsd.org/ports-distfiles/libcddb-1.3.2.tar.bz2",
+          "sha256": "35ce0ee1741ea38def304ddfe84a958901413aa829698357f0bee5bb8f0a223b"
+        },
+        {
+          "type": "script",
+          "commands": [
+            "autoreconf -fiv"
+          ],
+          "dest-filename": "autogen.sh"
+        }
+
+      ]
+    },
+    {
+      "name": "aalib",
+      "rm-configure": true,
+      "sources": [
+        {
+          "type": "archive",
+          "url": "http://distcache.freebsd.org/ports-distfiles/aalib-1.4rc5.tar.gz",
+          "sha256": "fbddda9230cf6ee2a4f5706b4b11e2190ae45f5eda1f0409dc4f99b35e0a70ee"
+        },
+        {
+          "type": "script",
+          "commands": [
+            "autoreconf -fiv"
+          ],
+          "dest-filename": "autogen.sh"
+        }
+
+      ]
+    },
+    {
+      "name": "chromaprint",
+      "buildsystem": "cmake-ninja",
+      "config-opts": [
+        "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
+        "-DBUILD_SHARED_LIBS=ON",
+        "-DCMAKE_POSITION_INDEPENDENT_CODE=ON"
+      ],
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://bitbucket.org/acoustid/chromaprint/downloads/chromaprint-1.4.2.tar.gz",
+          "sha256": "989609a7e841dd75b34ee793bd1d049ce99a8f0d444b3cea39d57c3e5d26b4d4"
+        }
+      ]
+    },
+    {
+      "name": "libshout",
+      "rm-configure": true,
+      "sources": [
+        {
+          "type": "archive",
+          "url": "http://downloads.xiph.org/releases/libshout/libshout-2.4.1.tar.gz",
+          "sha256": "f3acb8dec26f2dbf6df778888e0e429a4ce9378a9d461b02a7ccbf2991bbf24d"
+        },
+        {
+          "type": "patch",
+          "path": "libs/vlc/libshout-openssl11.patch"
+        },
+        {
+          "type": "script",
+          "commands": [
+            "autoreconf -fiv"
+          ],
+          "dest-filename": "autogen.sh"
+        }
+      ]
+    },
+    {
+      "name": "libupnp",
+      "rm-configure": true,
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://downloads.sourceforge.net/sourceforge/pupnp/libupnp-1.6.25.tar.bz2",
+          "sha256": "c5a300b86775435c076d58a79cc0d5a977d76027d2a7d721590729b7f369fa43"
+        },
+        {
+          "type": "script",
+          "commands": [
+            "autoreconf -fiv"
+          ],
+          "dest-filename": "autogen.sh"
+        }
+      ]
+    },
+    {
+      "name": "taglib",
+      "buildsystem": "cmake-ninja",
+      "config-opts": [
+        "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
+        "-DBUILD_SHARED_LIBS=ON",
+        "-DCMAKE_POSITION_INDEPENDENT_CODE=ON",
+        "-DWITH_MP4=ON",
+        "-DWITH_ASF=ON"
+      ],
+      "sources": [
+        {
+          "type": "archive",
+          "url": "http://taglib.org/releases/taglib-1.11.1.tar.gz",
+          "sha256": "b6d1a5a610aae6ff39d93de5efd0fdc787aa9e9dc1e7026fa4c961b26563526b"
+        },
+        {
+          "type": "script",
+          "commands": [
+            "autoreconf -fiv"
+          ],
+          "dest-filename": "autogen.sh"
+        }
+      ]
+    },
+    {
+      "name": "openjpeg",
+      "builddir": true,
+      "buildsystem": "cmake-ninja",
+      "config-opts": [
+        "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
+        "-DBUILD_SHARED_LIBS=ON",
+        "-DCMAKE_POSITION_INDEPENDENT_CODE=ON"
+      ],
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://github.com/uclouvain/openjpeg/archive/v2.3.0.tar.gz",
+          "sha256": "3dc787c1bb6023ba846c2a0d9b1f6e179f1cd255172bde9eb75b01f1e6c7d71a"
+        }
+      ]
+    },
+    {
+      "name": "gsm",
+      "no-autogen": true,
+      "build-options": {
+        "cflags": "-fPIC",
+        "cxxflags": "-c -fPIC"
+      },
+      "make-install-args": [
+        "-j1",
+        "INSTALL_ROOT=/app",
+        "GSM_INSTALL_INC=/app/include/gsm",
+        "GSM_INSTALL_MAN=/app/share/man/man3",
+        "TOAST_INSTALL_MAN=/app/share/man/man1"
+      ],
+      "sources": [
+        {
+          "type": "archive",
+          "url": "http://www.quut.com/gsm/gsm-1.0.17.tar.gz",
+          "sha256": "855a57d1694941ddf3c73cb79b8d0b3891e9c9e7870b4981613b734e1ad07601"
+        },
+        {
+          "type": "patch",
+          "path": "libs/vlc/gsm.patch"
+        },
+        {
+          "type": "patch",
+          "path": "libs/vlc/gsm-makefile.patch"
+        }
+      ]
+    },
+    {
+      "name": "libdvbpsi",
+      "rm-configure": true,
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://download.videolan.org/pub/libdvbpsi/1.3.2/libdvbpsi-1.3.2.tar.bz2",
+          "sha256": "ac4e39f2b9b1e15706ad261fa175a9430344d650a940be9aaf502d4cb683c5fe"
+        },
+        {
+          "type": "script",
+          "commands": [
+            "autoreconf -fiv"
+          ],
+          "dest-filename": "autogen.sh"
+        }
+      ]
+    },
+    {
+      "name": "libkate",
+      "rm-configure": true,
+      "config-opts": [
+        "--disable-static",
+        "--disable-doc"
+      ],
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://storage.googleapis.com/google-code-archive-downloads/v2/code.google.com/libkate/libkate-0.4.1.tar.gz",
+          "sha256": "c40e81d5866c3d4bf744e76ce0068d8f388f0e25f7e258ce0c8e76d7adc87b68"
+        },
+        {
+          "type": "patch",
+          "path": "libs/vlc/libkate.patch"
+        },
+        {
+          "type": "script",
+          "commands": [
+            "autoreconf -fiv"
+          ],
+          "dest-filename": "autogen.sh"
+        }
+      ]
+    },
+    {
+      "name": "libass",
+      "config-opts": [
+        "--enable-harfbuzz",
+        "--enable-fontconfig"
+      ],
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://github.com/libass/libass/releases/download/0.14.0/libass-0.14.0.tar.xz",
+          "sha256": "881f2382af48aead75b7a0e02e65d88c5ebd369fe46bc77d9270a94aa8fd38a2"
+        },
+        {
+          "type": "script",
+          "commands": [
+            "autoreconf -fiv"
+          ],
+          "dest-filename": "autogen.sh"
+        }
+      ]
+    },
+    {
+      "name": "libebml",
+      "builddir": true,
+      "buildsystem": "cmake-ninja",
+      "config-opts": [
+        "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
+        "-DBUILD_SHARED_LIBS=ON",
+        "-DCMAKE_POSITION_INDEPENDENT_CODE=ON"
+      ],
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://dl.matroska.org/downloads/libebml/libebml-1.3.9.tar.xz",
+          "sha256": "c6b6c6cd8b20a46203cb5dce636883aef68beb2846f1e4103b660a7da2c9c548"
+        }
+      ]
+    },
+    {
+      "name": "libmatroska",
+      "builddir": true,
+      "buildsystem": "cmake-ninja",
+      "config-opts": [
+        "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
+        "-DBUILD_SHARED_LIBS=ON",
+        "-DCMAKE_POSITION_INDEPENDENT_CODE=ON"
+      ],
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://dl.matroska.org/downloads/libmatroska/libmatroska-1.5.2.tar.xz",
+          "sha256": "0ac6debfbf781d47f001b830aaf9be9dfbcefd13bcfb80ca5efc1c04b4a3c962"
+        }
+      ]
+    },
+    {
+      "name": "libssh2",
+      "rm-configure": true,
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://www.libssh2.org/download/libssh2-1.8.0.tar.gz",
+          "sha256": "39f34e2f6835f4b992cafe8625073a88e5a28ba78f83e8099610a7b3af4676d4"
+        },
+        {
+          "type": "script",
+          "commands": [
+            "autoreconf -fiv"
+          ],
+          "dest-filename": "autogen.sh"
+        }
+      ]
+    },
+    {
+      "name": "libvncserver",
+      "buildsystem": "cmake-ninja",
+      "config-opts": [
+        "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
+        "-DBUILD_SHARED_LIBS=ON",
+        "-DCMAKE_POSITION_INDEPENDENT_CODE=ON"
+      ],
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://github.com/LibVNC/libvncserver/archive/LibVNCServer-0.9.12.tar.gz",
+          "sha256": "33cbbb4e15bb390f723c311b323cef4a43bcf781984f92d92adda3243a116136"
+        }
+      ]
+    },
+    {
+      "name": "libdvdread",
+      "rm-configure": true,
+      "sources": [
+        {
+          "type": "archive",
+          "url": "http://ftp.videolan.org/videolan/libdvdread/6.0.1/libdvdread-6.0.1.tar.bz2",
+          "sha256": "28ce4f0063883ca4d37dfd40a2f6685503d679bca7d88d58e04ee8112382d5bd"
+        },
+        {
+          "type": "script",
+          "commands": [
+            "autoreconf -fiv"
+          ],
+          "dest-filename": "autogen.sh"
+        }
+      ]
+    },
+    {
+      "name": "libdvdnav",
+      "rm-configure": true,
+      "sources": [
+        {
+          "type": "archive",
+          "url": "http://ftp.videolan.org/videolan/libdvdnav/6.0.0/libdvdnav-6.0.0.tar.bz2",
+          "sha256": "f0a2711b08a021759792f8eb14bb82ff8a3c929bf88c33b64ffcddaa27935618"
+        },
+        {
+          "type": "script",
+          "commands": [
+            "autoreconf -fiv"
+          ],
+          "dest-filename": "autogen.sh"
+        }
+      ]
+    },
+    {
+      "name": "libdvdcss",
+      "rm-configure": true,
+      "sources": [
+        {
+          "type": "archive",
+          "url": "http://ftp.videolan.org/videolan/libdvdcss/1.4.2/libdvdcss-1.4.2.tar.bz2",
+          "sha256": "78c2ed77ec9c0d8fbed7bf7d3abc82068b8864be494cfad165821377ff3f2575"
+        },
+        {
+          "type": "script",
+          "commands": [
+            "autoreconf -fiv"
+          ],
+          "dest-filename": "autogen.sh"
+        }
+      ]
+    },
+    {
+      "name": "libmodplug",
+      "rm-configure": true,
+      "sources": [
+        {
+          "type": "archive",
+          "url": "http://http.debian.net/debian/pool/main/libm/libmodplug/libmodplug_0.8.9.0.orig.tar.gz",
+          "sha256": "457ca5a6c179656d66c01505c0d95fafaead4329b9dbaa0f997d00a3508ad9de"
+        },
+        {
+          "type": "script",
+          "commands": [
+            "autoreconf -fiv"
+          ],
+          "dest-filename": "autogen.sh"
+        }
+      ]
+    },
+    {
+      "name": "x264",
+      "config-opts": [
+        "--enable-pic",
+        "--enable-shared"
+      ],
+      "sources": [
+        {
+          "type": "archive",
+          "url": "http://download.videolan.org/pub/videolan/x264/snapshots/x264-snapshot-20190319-2245-stable.tar.bz2",
+          "sha256": "9c8b6aa2a031473a3cdb6d0b7924d28d1c9a054981ac9f23d7113d8fb7cd09c9"
+        }
+      ]
+    },
+    {
+      "name": "x265",
+      "builddir": true,
+      "subdir": "source",
+      "buildsystem": "cmake-ninja",
+      "config-opts": [
+        "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
+        "-DBUILD_SHARED_LIBS=ON",
+        "-DCMAKE_POSITION_INDEPENDENT_CODE=ON"
+      ],
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://bitbucket.org/multicoreware/x265/downloads/x265_3.1.2.tar.gz",
+          "sha256": "6f785f1c9a42e00a56402da88463bb861c49d9af108be53eb3ef10295f2a59aa"
+        }
+      ]
+    },
+    {
+      "name": "dav1d",
+      "buildsystem": "meson",
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://get.videolan.org/dav1d/0.4.0/dav1d-0.4.0.tar.xz",
+          "sha256": "2553b2e65081c0ec799c11a752ea43ad8f2d11b2fb36a83375972d1a00add823"
+        }
+      ]
+    },
+    {
+      "name": "ffmpeg",
+      "config-opts": [
+        "--enable-pic",
+        "--enable-shared",
+        "--disable-doc",
+        "--disable-static",
+        "--enable-gpl",
+        "--enable-libx264",
+        "--enable-libx265",
+        "--enable-libvpx",
+        "--enable-libmp3lame",
+        "--enable-libvorbis",
+        "--enable-libopus"
+      ],
+      "sources": [
+        {
+          "type": "archive",
+          "url": "http://ffmpeg.org/releases/ffmpeg-4.2.1.tar.xz",
+          "sha256": "cec7c87e9b60d174509e263ac4011b522385fd0775292e1670ecc1180c9bb6d4"
+        }
+      ]
+    },
+    {
+      "name": "libsecret",
+      "config-opts": ["--disable-static", "--disable-manpages", "--disable-introspection"],
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://download.gnome.org/sources/libsecret/0.18/libsecret-0.18.5.tar.xz",
+          "sha256": "9ce7bd8dd5831f2786c935d82638ac428fa085057cc6780aba0e39375887ccb3"
+        },
+        {
+          "type": "shell",
+          "commands": ["autoreconf -f"]
+        }
+      ]
+    },
+    {
+      "name": "libaacs",
+      "config-opts": [
+        "--with-pic",
+        "--enable-shared",
+        "--disable-static"
+      ],
+      "sources": [
+        {
+          "type": "archive",
+          "url": "http://ftp.videolan.org/videolan/libaacs/0.9.0/libaacs-0.9.0.tar.bz2",
+          "sha256": "47e0bdc9c9f0f6146ed7b4cc78ed1527a04a537012cf540cf5211e06a248bace"
+        }
+      ]
+    },
+    {
+      "name": "libbdplus",
+      "config-opts": [
+        "--with-pic",
+        "--enable-shared",
+        "--disable-static"
+      ],
+      "build-options": {
+        "append-path": "/app/share/vlc/extra/bluray/ant/bin"
+      },
+      "sources": [
+        {
+          "type": "archive",
+          "url": "http://ftp.videolan.org/videolan/libbdplus/0.1.2/libbdplus-0.1.2.tar.bz2",
+          "sha256": "a631cae3cd34bf054db040b64edbfc8430936e762eb433b1789358ac3d3dc80a"
+        }
+      ]
+    },
+    {
+      "name": "libbluray",
+      "config-opts": ["--disable-static", "--disable-bdjava-jar"],
+      "sources": [
+        {
+          "type": "archive",
+          "url": "http://ftp.videolan.org/videolan/libbluray/1.1.2/libbluray-1.1.2.tar.bz2",
+          "sha256": "a3dd452239b100dc9da0d01b30e1692693e2a332a7d29917bf84bb10ea7c0b42"
+        }
+      ]
+    },    
+    {
+      "name": "fluidlite",
+      "buildsystem": "cmake-ninja",
+      "config-opts": [
+        "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
+        "-DBUILD_SHARED_LIBS=ON",
+        "-DCMAKE_POSITION_INDEPENDENT_CODE=ON"
+      ],
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://github.com/divideconcept/FluidLite/archive/7b5f2798d5c0f34e5436530412fe51e5183e8aa4.tar.gz",
+          "sha256": "da7cbf66289f259b3672f4febf85417100cf367c9da6d5c7576bf58773c8cdb7"
+        }
+      ]
+    },
+    {
+      "name": "libcaca",
+      "config-opts": ["--disable-static", "--disable-python", "--disable-ruby"],
+      "sources": [
+        {
+          "type": "archive",
+          "url": "http://http.debian.net/debian/pool/main/libc/libcaca/libcaca_0.99.beta19.orig.tar.gz",
+          "sha256": "128b467c4ed03264c187405172a4e83049342cc8cc2f655f53a2d0ee9d3772f4"
+        }
+      ]
+    },
+    {
+      "name": "libplacebo",
+      "buildsystem": "meson",
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://github.com/haasn/libplacebo/archive/v0.2.1.tar.gz",
+          "sha256": "d5d920a1745e4209287d32e8b96a85127b61b843304813980e11104cd9f15e82"
+        }
+      ]
+    },
+    {
+      "name": "protobuf",
+      "config-opts": ["--disable-static"],
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://github.com/google/protobuf/archive/v3.5.1/protobuf-3.5.1.tar.gz",
+          "sha256": "826425182ee43990731217b917c5c3ea7190cfda141af4869e6d4ad9085a740f"
+        },
+        {
+          "type": "archive",
+          "url": "https://github.com/google/googlemock/archive/release-1.7.0.tar.gz#/googlemock-1.7.0.tar.gz",
+          "sha256": "3f20b6acb37e5a98e8c4518165711e3e35d47deb6cdb5a4dd4566563b5efd232",
+          "dest": "gmock"
+        },
+        {
+          "type": "archive",
+          "url": "https://github.com/google/googletest/archive/release-1.7.0.tar.gz#/googletest-1.7.0.tar.gz",
+          "sha256": "f73a6546fdf9fce9ff93a5015e0333a8af3062a152a9ad6bcb772c96687016cc",
+          "dest": "gmock/gtest"
+
+        }
+      ]
+    },
+    {
+      "name": "libdsm",
+      "config-opts": ["--disable-static"],
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://github.com/videolabs/libdsm/releases/download/v0.3.0/libdsm-0.3.0.tar.gz",
+          "sha256": "96caef854a1f7aa61ab6fdfca9c36a1813b37d23d013db0bc4ec7cd38a570b1c"
+        }
+      ]
+    },
+    {
+      "name": "microdns",
+      "rm-configure": true,
+      "config-opts": ["--disable-static"],
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://github.com/videolabs/libmicrodns/releases/download/0.0.10/microdns-0.0.10.tar.gz",
+          "sha256": "f83c427cbbbad226729234245ce0d31ae7cdf11359d0ccdd0402d4c48fd3dd33"
+        },
+        {
+          "type": "script",
+          "commands": [
+            "autoreconf -fiv"
+          ],
+          "dest-filename": "autogen.sh"
+        }
+      ]
+    },
+    {
+      "name": "spatialaudio",
+      "builddir": true,
+      "buildsystem": "cmake-ninja",
+      "config-opts": [
+        "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
+        "-DBUILD_SHARED_LIBS=ON",
+        "-DCMAKE_POSITION_INDEPENDENT_CODE=ON"
+      ],
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://github.com/videolabs/libspatialaudio/releases/download/0.3.0/spatialaudio-0.3.0.tar.bz2",
+          "sha256": "284c1dbd8efd46c03be84ac7070bc87cae81b7125352b143a70be3e2b96988e3"
+        }
+      ]
+    },
+    {
+      "name": "srt",
+      "builddir": true,
+      "buildsystem": "cmake-ninja",
+      "config-opts": [
+        "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
+        "-DBUILD_SHARED_LIBS=ON",
+        "-DCMAKE_POSITION_INDEPENDENT_CODE=ON"
+      ],
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://github.com/Haivision/srt/archive/v1.3.2.tar.gz",
+          "sha256": "1b8bfb52313cd2c5455b461b18e3ca1e3d2433e7ea01a02c68a50ab5c53ed0af"
+        }
+      ]
+    },
+    {
+      "name": "live555",
+      "buildsystem": "simple",
+      "build-commands": [
+        "CXXFLAGS=`sed \"s/'/\\\"/g\" /etc/flatpak-builder/defaults.json | jq -r .cxxflags` ; sed -i -e \"s|-O2|$CXXFLAGS|\" config.linux-with-shared-libraries",
+        "./genMakefiles linux-with-shared-libraries",
+        "LDFLAGS=`sed \"s/'/\\\"/g\" /etc/flatpak-builder/defaults.json | jq -r .ldflags` ; make -j4 PREFIX=/app LIBDIR=/app/lib install",
+        "chmod +x /app/lib/libliveMedia.so* /app/lib/libUsageEnvironment.so* /app/lib/libBasicUsageEnvironment.so* /app/lib/libgroupsock.so*"
+      ],
+      "cleanup": [
+        "/bin"
+      ],
+      "sources": [
+        {
+          "type": "archive",
+          "path": "libs/live.2019.09.30.tar.gz",
+          "md5": "12e105c8fef9d34658d68367dc26a3d9"
+        },
+        {
+          "type": "patch",
+          "path": "libs/vlc/live555-add-pkgconfig-file.patch"
+        },
+        {
+          "type": "patch",
+          "path": "libs/vlc/live555-nosignal.patch"
+        }
+      ]
+    },
+    {
+      "name": "libnotify",
+      "buildsystem": "meson",
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://ftp.gnome.org/pub/GNOME/sources/libnotify/0.7/libnotify-0.7.8.tar.xz",
+          "sha256": "69209e0b663776a00c7b6c0e560302a8dbf66b2551d55616304f240bba66e18c"
+        }
+      ]
+    },
+    {
+      "name": "vlc",
+      "rm-configure": true,
+      "config-opts": [
+        "BUILDCC=/usr/bin/gcc -std=gnu99",
+        "--disable-a52", "--disable-qt", "--disable-udev", "--disable-mtp"
+      ],
+      "cleanup": [
+        "/share/macosx"
+      ],
+      "post-install": [
+        "install -Dp -m 644 org.videolan.VLC.appdata.xml /app/share/appdata/vlc.appdata.xml",
+        "mv /app/bin/vlc /app/bin/vlc.bin",
+        "mv vlc.sh /app/bin/vlc",
+        "chmod +x /app/bin/vlc",
+        "sed -i -e 's/Icon=vlc/Icon=org.videolan.VLC/g' /app/share/applications/vlc-*.desktop",
+        "for s in openbd opendvd opencda openvcd; do mv /app/share/applications/vlc-$s.desktop /app/share/applications/org.videolan.VLC-$s.desktop; done",
+        "tar xf chrpath-0.16.tar.gz && cd chrpath-0.16 && ./configure && make",
+        "./chrpath-0.16/chrpath -d /app/lib/vlc/plugins/access/liblibbluray_plugin.so"
+      ],
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://get.videolan.org/vlc/3.0.8/vlc-3.0.8.tar.xz",
+          "sha256": "e0149ef4a20a19b9ecd87309c2d27787ee3f47dfd47c6639644bc1f6fd95bdf6"
+
+        },
+        {
+          "type": "file",
+          "path": "libs/vlc/org.videolan.VLC.appdata.xml"
+        },
+        {
+          "type": "patch",
+          "path": "libs/vlc/vlc-fix-appdata.patch"
+        },
+        {
+          "type": "patch",
+          "path": "libs/vlc/vlc-disc-shortcuts.patch"
+        },
+        {
+          "type": "patch",
+          "path": "libs/vlc/vlc-ignore-time-for-cache.patch"
+        },
+        {
+          "type": "file",
+          "path": "libs/vlc/vlc.sh"
+        },
+        {
+          "type": "file",
+          "url": "https://src.fedoraproject.org/lookaside/extras/chrpath/chrpath-0.16.tar.gz/2bf8d1d1ee345fc8a7915576f5649982/chrpath-0.16.tar.gz",
+          "sha256": "bb0d4c54bac2990e1bdf8132f2c9477ae752859d523e141e72b3b11a12c26e7b"
+        }
+      ]
+    }
+  ]
+}

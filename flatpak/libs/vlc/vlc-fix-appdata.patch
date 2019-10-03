@@ -1,0 +1,21 @@
+diff --git a/share/vlc.appdata.xml.in.in b/share/vlc.appdata.xml.in.in
+index b271502eb9..b492c6f7ff 100644
+--- a/share/vlc.appdata.xml.in.in
++++ b/share/vlc.appdata.xml.in.in
+@@ -14,13 +14,15 @@
+             VCDs, and various streaming protocols.
+         </p>
+     </description>
++    <content_rating type="oars-1.1" />
+     <url type="homepage">https://www.videolan.org/vlc/</url>
+     <url type="bugtracker">https://trac.videolan.org/vlc/</url>
+     <url type="donation">https://www.videolan.org/contribute.html</url>
+     <releases>
+-        <release version="@VERSION@" />
++        <release version="@VERSION@" date="2019-01-01"/>
+     </releases>
+     <provides>
++        <id>org.videolan.VLC</id>
+         <library>libvlc.so.5</library>
+     </provides>
+     <project_group>VideoLAN</project_group>

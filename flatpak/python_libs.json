@@ -1,0 +1,161 @@
+{
+    "name": "pypi-dependencies",
+    "buildsystem": "simple",
+    "build-commands": [],
+    "modules": [
+        {
+            "name": "python3-numpy",
+            "buildsystem": "simple",
+            "build-commands": [
+                "pip3 install --no-index --find-links=\"file://${PWD}\" --prefix=${FLATPAK_DEST} numpy==1.17.2"
+            ],
+            "sources": [
+                {
+                    "type": "file",
+                    "url": "https://files.pythonhosted.org/packages/ac/36/325b27ef698684c38b1fe2e546e2e7ef9cecd7037bcdb35c87efec4356af/numpy-1.17.2.zip",
+                    "sha256": "73615d3edc84dd7c4aeb212fa3748fb83217e00d201875a47327f55363cef2df"
+                }
+            ]
+        },
+        {
+            "name": "python3-matplotlib",
+            "buildsystem": "simple",
+            "build-commands": [
+                "pip3 install --no-index --find-links=\"file://${PWD}\" --prefix=${FLATPAK_DEST} matplotlib"
+            ],
+            "sources": [
+                {
+                    "type": "file",
+                    "url": "https://files.pythonhosted.org/packages/dd/bf/4138e7bfb757de47d1f4b6994648ec67a51efe58fa907c1e11e350cddfca/six-1.12.0.tar.gz",
+                    "sha256": "d16a0141ec1a18405cd4ce8b4613101da75da0e9a7aec5bdd4fa804d0e0eba73"
+                },
+                {
+                    "type": "file",
+                    "url": "https://files.pythonhosted.org/packages/ad/99/5b2e99737edeb28c71bcbec5b5dda19d0d9ef3ca3e92e3e925e7c0bb364c/python-dateutil-2.8.0.tar.gz",
+                    "sha256": "c89805f6f4d64db21ed966fda138f8a5ed7a4fdbc1a8ee329ce1b74e3c74da9e"
+                },
+                {
+                    "type": "file",
+                    "url": "https://files.pythonhosted.org/packages/7e/24/eaa8d7003aee23eda270099eeec754d7bf4399f75c6a011ef948304f66a2/pyparsing-2.4.2.tar.gz",
+                    "sha256": "6f98a7b9397e206d78cc01df10131398f1c8b8510a2f4d97d9abd82e1aacdd80"
+                },
+                {
+                    "type": "file",
+                    "url": "https://files.pythonhosted.org/packages/c2/4b/137dea450d6e1e3d474e1d873cd1d4f7d3beed7e0dc973b06e8e10d32488/cycler-0.10.0.tar.gz",
+                    "sha256": "cd7b2d1018258d7247a71425e9f26463dfb444d411c39569972f4ce586b0c9d8"
+                },
+                {
+                    "type": "file",
+                    "url": "https://files.pythonhosted.org/packages/12/d1/7b12cd79c791348cb0c78ce6e7d16bd72992f13c9f1e8e43d2725a6d8adf/matplotlib-3.1.1.tar.gz",
+                    "sha256": "1febd22afe1489b13c6749ea059d392c03261b2950d1d45c17e3aed812080c93"
+                },
+                {
+                    "type": "file",
+                    "url": "https://files.pythonhosted.org/packages/16/e7/df58eb8868d183223692d2a62529a594f6414964a3ae93548467b146a24d/kiwisolver-1.1.0.tar.gz",
+                    "sha256": "53eaed412477c836e1b9522c19858a8557d6e595077830146182225613b11a75"
+                },
+                {
+                    "type": "file",
+                    "url": "https://files.pythonhosted.org/packages/ac/36/325b27ef698684c38b1fe2e546e2e7ef9cecd7037bcdb35c87efec4356af/numpy-1.17.2.zip",
+                    "sha256": "73615d3edc84dd7c4aeb212fa3748fb83217e00d201875a47327f55363cef2df"
+                },
+                {
+                    "type": "file",
+                    "url": "https://files.pythonhosted.org/packages/73/fb/00a976f728d0d1fecfe898238ce23f502a721c0ac0ecfedb80e0d88c64e9/six-1.12.0-py2.py3-none-any.whl",
+                    "sha256": "3350809f0555b11f552448330d0b52d5f24c91a322ea4a15ef22629740f3761c"
+                },
+                {
+                    "type": "file",
+                    "url": "https://files.pythonhosted.org/packages/11/fa/0160cd525c62d7abd076a070ff02b2b94de589f1a9789774f17d7c54058e/pyparsing-2.4.2-py2.py3-none-any.whl",
+                    "sha256": "d9338df12903bbf5d65a0e4e87c2161968b10d2e489652bb47001d82a9b028b4"
+                },
+                {
+                    "type": "file",
+                    "url": "https://files.pythonhosted.org/packages/41/17/c62faccbfbd163c7f57f3844689e3a78bae1f403648a6afb1d0866d87fbb/python_dateutil-2.8.0-py2.py3-none-any.whl",
+                    "sha256": "7e6584c74aeed623791615e26efd690f29817a27c73085b78e4bad02493df2fb"
+                },
+                {
+                    "type": "file",
+                    "url": "https://files.pythonhosted.org/packages/f7/d2/e07d3ebb2bd7af696440ce7e754c59dd546ffe1bbe732c8ab68b9c834e61/cycler-0.10.0-py2.py3-none-any.whl",
+                    "sha256": "1d8a5ae1ff6c5cf9b93e8811e581232ad8920aeec647c37316ceac982b08cb2d"
+                }
+            ]
+        },
+        {
+            "name": "python3-PyYAML",
+            "buildsystem": "simple",
+            "build-commands": [
+                "pip3 install --no-index --find-links=\"file://${PWD}\" --prefix=${FLATPAK_DEST} PyYAML==5.1.2"
+            ],
+            "sources": [
+                {
+                    "type": "file",
+                    "url": "https://files.pythonhosted.org/packages/e3/e8/b3212641ee2718d556df0f23f78de8303f068fe29cdaa7a91018849582fe/PyYAML-5.1.2.tar.gz",
+                    "sha256": "01adf0b6c6f61bd11af6e10ca52b7d4057dd0be0343eb9283c878cf3af56aee4"
+                }
+            ]
+        },
+        {
+            "name": "python3-python-vlc",
+            "buildsystem": "simple",
+            "build-commands": [
+                "pip3 install --no-index --find-links=\"file://${PWD}\" --prefix=${FLATPAK_DEST} python-vlc==3.0.6109"
+            ],
+            "sources": [
+                {
+                    "type": "file",
+                    "url": "https://files.pythonhosted.org/packages/79/67/a70a25b6c98934445f76d0d860d1cdc27552c8b9f91a58dc126f72cccb9d/python_vlc-3.0.6109-py3-none-any.whl",
+                    "sha256": "0c2c6b4e4b0cad162a694e7740a8571f12fd7eebacd5b55c93e457f917b89cd7"
+                }
+            ]
+        },
+        {
+            "name": "python3-sounddevice",
+            "buildsystem": "simple",
+            "build-commands": [
+                "pip3 install --no-index --find-links=\"file://${PWD}\" --prefix=${FLATPAK_DEST} sounddevice==0.3.13"
+            ],
+            "sources": [
+                {
+                    "type": "file",
+                    "url": "https://files.pythonhosted.org/packages/93/1a/ab8c62b5838722f29f3daffcc8d4bd61844aa9b5f437341cc890ceee483b/cffi-1.12.3.tar.gz",
+                    "sha256": "041c81822e9f84b1d9c401182e174996f0bae9991f33725d059b771744290774"
+                },
+                {
+                    "type": "file",
+                    "url": "https://files.pythonhosted.org/packages/68/9e/49196946aee219aead1290e00d1e7fdeab8567783e83e1b9ab5585e6206a/pycparser-2.19.tar.gz",
+                    "sha256": "a988718abfad80b6b157acce7bf130a30876d27603738ac39f140993246b25b3"
+                },
+                {
+                    "type": "file",
+                    "url": "https://files.pythonhosted.org/packages/d1/f2/7cb487ac7171dfade8af7a368bd8806ecff82016f4ac9894835cd7de9ecc/sounddevice-0.3.13-py2.py3-none-any.whl",
+                    "sha256": "b038315e3497e01b1cb22630bc9b5025fcfad40e5ef7c125a9d565befa7220e0"
+                }
+            ]
+        },
+        {
+            "name": "python3-soundfile",
+            "buildsystem": "simple",
+            "build-commands": [
+                "pip3 install --no-index --find-links=\"file://${PWD}\" --prefix=${FLATPAK_DEST} soundfile==0.10.2"
+            ],
+            "sources": [
+                {
+                    "type": "file",
+                    "url": "https://files.pythonhosted.org/packages/93/1a/ab8c62b5838722f29f3daffcc8d4bd61844aa9b5f437341cc890ceee483b/cffi-1.12.3.tar.gz",
+                    "sha256": "041c81822e9f84b1d9c401182e174996f0bae9991f33725d059b771744290774"
+                },
+                {
+                    "type": "file",
+                    "url": "https://files.pythonhosted.org/packages/68/9e/49196946aee219aead1290e00d1e7fdeab8567783e83e1b9ab5585e6206a/pycparser-2.19.tar.gz",
+                    "sha256": "a988718abfad80b6b157acce7bf130a30876d27603738ac39f140993246b25b3"
+                },
+                {
+                    "type": "file",
+                    "url": "https://files.pythonhosted.org/packages/68/64/1191352221e2ec90db7492b4bf0c04fd9d2508de67b3f39cbf093cd6bd86/SoundFile-0.10.2-py2.py3-none-any.whl",
+                    "sha256": "181393f8daac38bda997c4284b760bcd726dc0e847f620020d7bf2d3d538a985"
+                }
+            ]
+        }
+    ]
+}

@@ -2,3 +2,5 @@
 __pycache__
 .pyc
 .ropeproject
+flatpak/.flatpak-builder
+flatpak/build-dir
