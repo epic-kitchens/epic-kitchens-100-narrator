@@ -20,15 +20,30 @@ jobs:
           name: Install Gnome SDK
           command: |
               docker exec -it fb bash -c '\
-                flatpak install flathub org.gnome.Sdk//3.32 && \
-                flatpak install flathub org.gnome.Platform//3.32'
+                flatpak install -y flathub org.gnome.Sdk//3.32 && \
+                flatpak install -y flathub org.gnome.Platform//3.32'
+
       - run:
           name: Build narrator flatpak
           command: |
-           docker exec -it fb bash -c 'cd /tmp/narrator/flatpak && flatpak-builder \
+           docker exec -it fb bash -c '\
+             cd /tmp/narrator/flatpak && \
+             flatpak-builder \
                   --arch=x86_64 \
                   --ccache \
                   --force-clean \
                   --repo=epic-repo \
                   epic-narrator-build \
                   epic.narrator.json'
+
+      - run:
+          name: Bundle narrator flatpak
+          command: |
+           docker exec -it fb bash -c '\
+             cd /tmp/narrator/flatpak && \
+             flatpak build-bundle \
+               epic-repo \
+               epic_narrator.flatpak \
+               uk.ac.bris.epic.narrator
+      - store_artifacts:
+          path: flatpak/epic_narrator.flatpak
