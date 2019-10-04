@@ -118,7 +118,7 @@ class Recordings:
             next = self._recording_times[self._highlighted_rec_index+1]
             dist = next - time
 
-            if 0 < dist <= neighbourhood:
+            if dist <= neighbourhood:
                 return next
             else:
                 return None

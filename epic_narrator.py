@@ -523,11 +523,13 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
         if box is not None:
             adj = self.annotation_scrolled_window.get_vadjustment()
-            asd, y = self.annotation_box.translate_coordinates(box, 0, 0)
-            adj.set_value(abs(y))
+            unset, y = self.annotation_box.translate_coordinates(box, 0, 0)
 
-            if highlight:
-                self.highlight_recording_annotation(box, rec)
+            if not unset:
+                adj.set_value(abs(y))
+
+                if highlight:
+                    self.highlight_recording_annotation(box, rec)
 
     def find_closest_rec(self, time_ms, seeking=True):
         if seeking:
@@ -557,6 +559,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         context.add_class(css_class)
         self.highlighted_recording_button = button
         self.highlighed_recording_time = time_ms
+
         self.recordings.move_highlighted_next()
 
     def play_recording(self, widget, event, time_ms):
@@ -784,9 +787,8 @@ class EpicNarrator(Gtk.ApplicationWindow):
             self.pause_video(None)
 
         path = self.recordings.add_recording(rec_time)
-        self.recorder.start_recording(path)
-        box = self.add_annotation_box(rec_time, new=True)
         self.add_time_tick(rec_time, colour=self.red_tick_colour)
+        box = self.add_annotation_box(rec_time, new=True)
 
         # we need to wait until the box is actually displayed and sorted in order to scroll to the right position
         while Gtk.events_pending():
@@ -795,6 +797,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self.scroll_annotations_box_to_rec(rec_time, box=box, highlight=False)
         self.highlight_recording_annotation(box, rec_time, current_recording=True)
 
+        self.recorder.start_recording(path)
 
     def toggle_media_controls(self, active):
         self.slider.set_sensitive(active)
