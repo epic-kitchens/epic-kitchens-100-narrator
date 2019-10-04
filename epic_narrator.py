@@ -462,7 +462,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self.hold_to_record = self.hold_to_record_menu_item.get_active()
         self.settings.update_settings(hold_to_record=self.hold_to_record)
 
-    def add_annotation_box(self, time_ms):
+    def add_annotation_box(self, time_ms, new=False):
         box = Gtk.ButtonBox()
 
         time_button = Gtk.Button()
@@ -494,10 +494,13 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
         self.annotation_box_map[time_ms] = box
         self.annotation_box.pack_start(box, False, True, 0)
-        self.refresh_annotation_box()
         self.annotation_box.show_all()
 
+        if new:
+            self.refresh_annotation_box()
+
         return box
+
 
     def go_to(self, widget, event, time_ms):
         if time_ms < 0 or time_ms > self.video_length_ms:
@@ -514,20 +517,25 @@ class EpicNarrator(Gtk.ApplicationWindow):
         adj = self.annotation_scrolled_window.get_vadjustment()
         adj.set_value(adj.get_upper())
 
-    def scroll_annotations_box_to_time(self, time_ms):
-        if self.is_seeking:
+    def scroll_annotations_box_to_rec(self, rec, box=None, highlight=True):
+        if box is None:
+            box = self.annotation_box_map[rec] if rec in self.annotation_box_map else None
+
+        if box is not None:
+            adj = self.annotation_scrolled_window.get_vadjustment()
+            asd, y = self.annotation_box.translate_coordinates(box, 0, 0)
+            adj.set_value(abs(y))
+
+            if highlight:
+                self.highlight_recording_annotation(box, rec)
+
+    def find_closest_rec(self, time_ms, seeking=True):
+        if seeking:
             rec = self.recordings.get_closest_recording(time_ms)
         else:
             rec = self.recordings.get_next_from_highlighted(time_ms)
 
-        box = self.annotation_box_map[rec] if rec in self.annotation_box_map else None
-
-        if box is not None:
-            adj = self.annotation_scrolled_window.get_vadjustment()
-            _, y = self.annotation_box.translate_coordinates(box, 0, 0)
-            adj.set_value(abs(y))
-            self.highlight_recording_annotation(box, rec)
-            self.recordings.move_highlighted_next()
+        return rec
 
     def reset_highlighted_annotation(self):
         if self.highlighted_recording_button is not None:
@@ -549,6 +557,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         context.add_class(css_class)
         self.highlighted_recording_button = button
         self.highlighed_recording_time = time_ms
+        self.recordings.move_highlighted_next()
 
     def play_recording(self, widget, event, time_ms):
         LOG.info("Playing recording at {}ms".format(time_ms))
@@ -776,9 +785,16 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
         path = self.recordings.add_recording(rec_time)
         self.recorder.start_recording(path)
-        box = self.add_annotation_box(rec_time)
-        self.highlight_recording_annotation(box, rec_time, current_recording=True)
+        box = self.add_annotation_box(rec_time, new=True)
         self.add_time_tick(rec_time, colour=self.red_tick_colour)
+
+        # we need to wait until the box is actually displayed and sorted in order to scroll to the right position
+        while Gtk.events_pending():
+            Gtk.main_iteration()
+
+        self.scroll_annotations_box_to_rec(rec_time, box=box, highlight=False)
+        self.highlight_recording_annotation(box, rec_time, current_recording=True)
+
 
     def toggle_media_controls(self, active):
         self.slider.set_sensitive(active)
@@ -941,7 +957,8 @@ class EpicNarrator(Gtk.ApplicationWindow):
         current_time_ms = self.player.get_time()
         self.slider.set_value(current_time_ms)
         self.update_time_label(current_time_ms)
-        self.scroll_annotations_box_to_time(current_time_ms)
+        closest_rec = self.find_closest_rec(current_time_ms, seeking=False)
+        self.scroll_annotations_box_to_rec(closest_rec)
 
         if self.play_recs_with_video and not self.is_seeking and self.highlighed_recording_time is not None:
             rec = self.highlighed_recording_time
@@ -962,7 +979,8 @@ class EpicNarrator(Gtk.ApplicationWindow):
         slider_pos_ms = self.slider.get_value()
         self.player.set_time(int(slider_pos_ms))
         self.update_time_label(slider_pos_ms)
-        self.scroll_annotations_box_to_time(slider_pos_ms)
+        closest_rec = self.find_closest_rec(slider_pos_ms, seeking=True)
+        self.scroll_annotations_box_to_rec(closest_rec)
 
         return False
 
