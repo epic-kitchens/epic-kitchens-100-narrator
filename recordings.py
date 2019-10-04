@@ -110,16 +110,21 @@ class Recordings:
         if 0 <= rec_index < len(self._recording_times):
             self._highlighted_rec_index = rec_index
 
-    def get_next_from_highlighted(self, time, neighbourhood=1000):
+    def get_next_from_highlighted(self, time, neighbourhood=500):
         if self._highlighted_rec_index is None:
             self._set_currently_highlighted_recording_from_time(time)
 
         if self._highlighted_rec_index is not None and self._highlighted_rec_index + 1 < len(self._recording_times):
-            next = self._recording_times[self._highlighted_rec_index+1]
-            dist = next - time
+            next_rec = self._recording_times[self._highlighted_rec_index+1]
+            dist = next_rec - time
 
-            if dist <= neighbourhood:
-                return next
+            if dist < 0:
+                # we are dragging behind, so let's find the closest one from the current highlighted
+                for t in self._recording_times[self._highlighted_rec_index+1:]:
+                    if t - time >= 0:
+                        return t
+            elif dist < neighbourhood:
+                return next_rec
             else:
                 return None
         else:
