@@ -38,3 +38,12 @@ Once installed, the narrator can be run with
 ```bash
 flatpak run uk.ac.bris.epic.narrator
 ```
+
+### Building script
+
+The two building commands are run by the simple script `build_flatpak.sh`. 
+Once you're set up, you may thus want to run the following for convenience:   
+
+```bash
+sh build_flatpak.sh
+```
