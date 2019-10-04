@@ -1,6 +1,13 @@
 # Instructions to build Epic Narrator with flatpak
 
-First of all, install [flatpak-builder](http://docs.flatpak.org/en/latest/flatpak-builder.html) on your system
+First of all, install [flatpak-builder](http://docs.flatpak.org/en/latest/flatpak-builder.html) 
+on your system (using apt, yum, dnf or whatever your distribution uses)
+
+You will then need to install GTK's SDK:
+
+```bash
+flatpak install flathub org.gnome.Sdk//3.32
+```
 
 Then `cd` into this directory, keeping the folder structure untouched, and run
 
