@@ -1,0 +1,34 @@
+version: 2
+jobs:
+  build:
+    working_directory: ~/repo
+    machine: true
+    steps:
+      - checkout
+      - run:
+          name: Create Flatpak Builder container
+          command: |
+              docker run \
+                --privileged \
+                --volume "${PWD}/":/tmp/narrator/ \
+                --name fb \
+                -it \
+                -d flatpak/flatpak-builder:base \
+                /bin/bash
+
+      - run:
+          name: Install Gnome SDK
+          command: |
+              docker exec -it fb bash -c '\
+                flatpak install flathub org.gnome.Sdk//3.32 && \
+                flatpak install flathub org.gnome.Platform//3.32'
+      - run:
+          name: Build narrator flatpak
+          command: |
+           docker exec -it fb bash -c 'cd /tmp/narrator/flatpak && flatpak-builder \
+                  --arch=x86_64 \
+                  --ccache \
+                  --force-clean \
+                  --repo=epic-repo \
+                  epic-narrator-build \
+                  epic.narrator.json'
