@@ -2,9 +2,9 @@ import faulthandler
 import logging
 import os
 import queue
-import random
 import sys
 import ctypes
+import threading
 import time
 import traceback
 import argparse
@@ -18,19 +18,16 @@ import matplotlib.pyplot as plt
 import gi
 from recorder import Recorder
 from recordings import Recordings, ms_to_timestamp
-from unique_queue import UniqueQueue
 
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk, GLib, Gdk, Pango
+from gi.repository import Gtk, GLib, Gdk, Pango, GObject
 from matplotlib.animation import FuncAnimation
 from matplotlib.backends.backend_gtk3agg import (FigureCanvasGTK3Agg as FigureCanvas)
-from threading import Thread, Event
 
 if sys.platform.startswith('darwin'):
     plt.switch_backend('MacOSX')
 else:
     plt.switch_backend('GTK3Agg')
-
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__name__))
 LOG = logging.getLogger('epic_narrator')
@@ -298,15 +295,6 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self.connect("key-press-event", self.key_pressed)
         self.connect("key-release-event", self.key_released)
 
-        # queue to play recordings with video
-        '''
-        self.rec_queue = UniqueQueue()  # writer() writes to rec_queue from _this_ process
-        self.rec_worker = Thread(target=self.rec_reader_proc, args=(self.rec_queue,))
-        self.rec_worker.setDaemon(True)
-        self.rec_playing_event = Event()
-        self.rec_playing_event.clear()
-        self.rec_worker.start()
-        '''
         self.last_played_rec = None
         self.is_ui_ready = True
 
@@ -353,27 +341,13 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
         return recorder
 
-    '''
-    def rec_reader_proc(self, queue):
-        log = logging.getLogger("epic_narrator.recorder_reader")
-        while True:
-            if self.is_shutting_down:
-                break
-
-            if not self.rec_playing_event.is_set():
-                log.info("Waiting for recording")
-                self.rec_playing_event.wait()
-
-            time_ms = queue.get()
-            log.info("Got recording")
-            self.play_recording(None, None, time_ms)
-    '''
-
     def play_recs_with_video_toggled(self, widget):
         self.play_recs_with_video = self.play_recs_with_video_button.get_active()
 
-    def finished_playing_recording(self, args):
-        # self.rec_playing_event.set()
+    def finished_playing_recording_handler(self, args):
+        GLib.idle_add(self.finished_playing_recording)
+
+    def finished_playing_recording(self):
         if self.was_playing_before_playing_rec:
             self.play_video()
             self.was_playing_before_playing_rec = False
@@ -567,12 +541,15 @@ class EpicNarrator(Gtk.ApplicationWindow):
         recording_path = self.recordings.get_path_for_recording(time_ms)
 
         if recording_path is not None:
+            if self.was_playing_before_playing_rec:
+                GLib.idle_add(self.pause_video)
+
             audio_media = self.vlc_instance.media_new_path(recording_path)
             self.rec_player.audio_set_mute(False)
             mrl = audio_media.get_mrl()
             self.rec_player.set_mrl(mrl)
-            # self.rec_playing_event.clear()
-            self.rec_player.play()
+
+            GLib.idle_add(self.rec_player.play)
 
     def delete_recording(self, widget, event, time_ms, current_recording=False):
         if current_recording:
@@ -840,7 +817,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         if seek_pos >= 1:
             self.is_seeking = True
             self.player.set_time(int(seek_pos))
-            self.video_moving(None)
+            self.video_moving()
 
         return True  # this will be called inside a timeout so we return True
 
@@ -879,7 +856,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         if seek_pos < self.video_length_ms:
             self.is_seeking = True
             self.player.set_time(int(seek_pos))
-            self.video_moving(None)
+            self.video_moving()
 
         return True  # this will be called inside a timeout so we return True
 
@@ -898,11 +875,13 @@ class EpicNarrator(Gtk.ApplicationWindow):
         LOG.info("Pause video")
         self.player.set_pause(True)
         self.playback_button.set_image(self.play_image)
+        # print('pause', threading.current_thread())
 
     def play_video(self, *args):
         LOG.info("Play video")
         self.player.play()
         self.playback_button.set_image(self.pause_image)
+        # print('play', threading.current_thread())
 
     def toggle_player_playback(self, *args):
         LOG.info("Toggle playback")
@@ -914,13 +893,11 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
     def mute_video(self):
         LOG.info("Mute video")
-        #if not self.player.audio_get_mute():
         self.mute_button.set_image(self.unmute_image)
         self.player.audio_set_mute(True)
 
     def unmute_video(self):
         LOG.info("Unmute video")
-        #if self.player.audio_get_mute():
         self.mute_button.set_image(self.mute_image)
         self.player.audio_set_mute(False)
 
@@ -944,8 +921,6 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
         if self.video_length_ms > 0:
             self.slider.set_range(1, self.video_length_ms)
-            # self.add_start_end_slider_ticks()
-            # self.rec_playing_event.set()
             self.pause_video()
             self.is_video_loaded = True
 
@@ -956,7 +931,10 @@ class EpicNarrator(Gtk.ApplicationWindow):
         else:
             return True  # video not loaded yet, will try again later
 
-    def video_moving(self, *args):
+    def video_moving_handler(self, *args):
+        GLib.idle_add(self.video_moving)  # this will be run in the main thread when possible
+
+    def video_moving(self):
         current_time_ms = self.player.get_time()
         self.slider.set_value(current_time_ms)
         self.update_time_label(current_time_ms)
@@ -968,8 +946,6 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
             if rec and rec != self.last_played_rec:
                 self.last_played_rec = rec
-                # self.rec_queue.put(rec)
-                self.pause_video()
                 self.was_playing_before_playing_rec = True
                 self.play_recording(None, None, rec)
 
@@ -987,7 +963,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
         return False
 
-    def video_ended(self, data):
+    def video_ended_handler(self, data):
         GLib.timeout_add(100, self.reload_current_video)  # need to call this with some delay otherwise it gets stuck
 
     def reload_current_video(self):
@@ -1023,16 +999,27 @@ class EpicNarrator(Gtk.ApplicationWindow):
             raise Exception('Cannot deal with this platform: {}'.format(sys.platform))
 
     def setup_vlc_player(self, widget):
-        self.vlc_instance = vlc.Instance('--no-xlib')
+        self.vlc_instance = vlc.Instance('--no-xlib', '--avcodec-threads=1', '--sout-transcode-threads=1')
         self.player = self.vlc_instance.media_player_new()
-        self.rec_player = self.vlc_instance.media_player_new()
         self.set_vlc_window()
         main_events = self.player.event_manager()
-        main_events.event_attach(vlc.EventType.MediaPlayerPositionChanged, self.video_moving)
-        main_events.event_attach(vlc.EventType.MediaPlayerEndReached, self.video_ended)
 
+        # from lib vlc documentation. Make sure you don't use wait anywhere in the program
+        '''
+        while LibVLC is active, the wait() function shall not be called, and
+        any call to waitpid() shall use a strictly positive value for the first
+        parameter (i.e. the PID). Failure to follow those rules may lead to a
+        deadlock or a busy loop.
+        '''
+
+        # VERY IMPORTANT: functions attached to vlc events will be run in a separate thread,
+        # so implement all thread safety things you need, i.e. use glib.idle_add() to do stuff
+        main_events.event_attach(vlc.EventType.MediaPlayerPositionChanged, self.video_moving_handler)
+        main_events.event_attach(vlc.EventType.MediaPlayerEndReached, self.video_ended_handler)
+
+        self.rec_player = self.vlc_instance.media_player_new()
         rec_events = self.rec_player.event_manager()
-        rec_events.event_attach(vlc.EventType.MediaPlayerEndReached, self.finished_playing_recording)
+        rec_events.event_attach(vlc.EventType.MediaPlayerStopped, self.finished_playing_recording_handler)
 
     def video_area_ready(self, widget):
         self.setup_vlc_player(widget)
@@ -1147,6 +1134,6 @@ def setup_logging(args):
 
 if __name__ == '__main__':
     faulthandler.enable()
-
+    # GObject.threads_init() not needed for PyGObject >= 3.10.2
     main(parser.parse_args())
 
