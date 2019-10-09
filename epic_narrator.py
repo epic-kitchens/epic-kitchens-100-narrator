@@ -224,7 +224,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self.annotation_scrolled_window = Gtk.ScrolledWindow()
         self.annotation_scrolled_window.set_border_width(10)
         self.annotation_scrolled_window.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        self.annotation_scrolled_window.add_with_viewport(self.annotation_box)
+        self.annotation_scrolled_window.add(self.annotation_box)
         self.right_box.pack_start(Gtk.Label(label='Recordings'), False, False, 10)
         self.right_box.pack_start(self.annotation_scrolled_window, True, True, 0)
         self.right_box.set_size_request(300, self.annotation_box_height)
@@ -655,9 +655,9 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
             confirm_dialog.destroy()
 
-        file_dialog = Gtk.FileChooserDialog("Open video", self, action=Gtk.FileChooserAction.OPEN,
-                                            buttons=(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
-                                                     Gtk.STOCK_OK, Gtk.ResponseType.OK))
+        file_dialog = Gtk.FileChooserDialog(title="Open video", parent=self, action=Gtk.FileChooserAction.OPEN)
+        file_dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
+        file_dialog.add_button("OK", Gtk.ResponseType.OK)
 
         video_file_filter = Gtk.FileFilter()
         video_file_filter.set_name("Video files")
@@ -999,7 +999,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
             raise Exception('Cannot deal with this platform: {}'.format(sys.platform))
 
     def setup_vlc_player(self, widget):
-        self.vlc_instance = vlc.Instance('--no-xlib', '--avcodec-threads=1', '--sout-transcode-threads=1')
+        self.vlc_instance = vlc.Instance('--no-xlib')
         self.player = self.vlc_instance.media_player_new()
         self.set_vlc_window()
         main_events = self.player.event_manager()
@@ -1026,9 +1026,10 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self.load_last_video()
 
     def choose_output_folder(self, default_output):
-        dialog = Gtk.FileChooserDialog("Select output folder", self, action=Gtk.FileChooserAction.SELECT_FOLDER,
-                                       buttons=(Gtk.STOCK_OK, Gtk.ResponseType.OK))
+        dialog = Gtk.FileChooserDialog(title="Select output folder", parent=self,
+                                       action=Gtk.FileChooserAction.SELECT_FOLDER)
 
+        dialog.add_button("OK", Gtk.ResponseType.OK)
         dialog.set_current_folder(default_output)
         dialog.run()
         path = dialog.get_filename()
