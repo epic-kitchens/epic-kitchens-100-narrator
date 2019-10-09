@@ -32,7 +32,7 @@
                 "install -D epic_narrator.py /app/bin/epic_narrator.py",
                 "install -D recorder.py /app/bin/recorder.py",
                 "install -D recordings.py /app/bin/recordings.py",
-                "install -D settings.py /app/bin/settings.py",
+                "install -D settings.py /app/bin/settings.py"
             ],
             "sources": [
                 {
