@@ -33,7 +33,6 @@
                 "install -D recorder.py /app/bin/recorder.py",
                 "install -D recordings.py /app/bin/recordings.py",
                 "install -D settings.py /app/bin/settings.py",
-                "install -D unique_queue.py /app/bin/unique_queue.py"
             ],
             "sources": [
                 {
@@ -51,10 +50,6 @@
                 {
                     "type": "file",
                     "path": "../settings.py"
-                },
-                {
-                    "type": "file",
-                    "path": "../unique_queue.py"
                 },
                 {
                     "type": "file",
