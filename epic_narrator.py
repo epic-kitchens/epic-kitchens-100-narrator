@@ -330,7 +330,9 @@ class EpicNarrator(Gtk.ApplicationWindow):
             recorder = Recorder(device_id=mic_id)
         except Exception:
             recorder = Recorder(device_id=default_mic_device)
-            dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.ERROR, Gtk.ButtonsType.OK, 'Cannot use this device')
+            dialog = Gtk.MessageDialog(parent=self, flags=0, message_type=Gtk.MessageType.ERROR,
+                                       title='Cannot use this device')
+            dialog.add_button("OK", Gtk.ResponseType.OK)
             dialog.format_secondary_text('Could not use device with ID {}. This is likely due to a saved configuration '
                                          'that is no longer available '
                                          '(e.g. you used a device that is not plugged anymore)\n\n'
@@ -556,9 +558,10 @@ class EpicNarrator(Gtk.ApplicationWindow):
             msg = 'Are you sure you want to delete the current recording?'
         else:
             msg = 'Are you sure you want to delete recording at time {}?'.format(ms_to_timestamp(time_ms))
-        dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.QUESTION,
-                                   (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK, Gtk.ResponseType.OK),
-                                   'Confirm delete')
+
+        dialog = Gtk.MessageDialog(parent=self, flags=0, message_type=Gtk.MessageType.QUESTION, title='Confirm delete')
+        dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
+        dialog.add_button("OK", Gtk.ResponseType.OK)
         dialog.format_secondary_text(msg)
         response = dialog.run()
         dialog.destroy()
@@ -635,7 +638,9 @@ class EpicNarrator(Gtk.ApplicationWindow):
                 self.settings.update_settings(microphone=mic_id)
         except Exception as e:
             traceback.print_exc()
-            dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.ERROR, Gtk.ButtonsType.OK, 'Cannot use this device')
+            dialog = Gtk.MessageDialog(parent=self, flags=0, message_type=Gtk.MessageType.ERROR,
+                                       title='Cannot use this device')
+            dialog.add_button("OK", Gtk.ResponseType.OK)
             dialog.format_secondary_text('Please select another device and check you can see a signal in the '
                                          'microphone level when you speak')
             dialog.run()
@@ -643,10 +648,11 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
     def choose_video(self, *args):
         if self.is_video_loaded:
-            confirm_dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.QUESTION,
-                                       (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK, Gtk.ResponseType.OK),
-                                       'Confirm loading another video')
+            confirm_dialog = Gtk.MessageDialog(parent=self, flags=0, message_type=Gtk.MessageType.QUESTION,
+                                               title='Confirm loading another video')
             confirm_dialog.format_secondary_text('Are you sure you want to load another video?')
+            confirm_dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
+            confirm_dialog.add_button("OK", Gtk.ResponseType.OK)
             response = confirm_dialog.run()
 
             if response != Gtk.ResponseType.OK:
@@ -680,7 +686,9 @@ class EpicNarrator(Gtk.ApplicationWindow):
             path = file_dialog.get_filename()
 
             if os.path.isdir(path):
-                message_dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.ERROR, Gtk.ButtonsType.OK, 'Invalid path')
+                message_dialog = Gtk.MessageDialog(parent=self, flags=0, message_type=Gtk.MessageType.ERROR,
+                                                   title='Invalid path')
+                message_dialog.add_button("OK", Gtk.ResponseType.OK)
                 message_dialog.format_secondary_text('You cannot select a folder!')
                 message_dialog.run()
                 message_dialog.destroy()
