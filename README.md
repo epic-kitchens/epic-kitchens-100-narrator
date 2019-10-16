@@ -97,13 +97,16 @@ to avoid clipping.
 Alternatively, if you switch the option `Settings -> Hold to record` you can record while holding down either the record
 button or the enter key. In this case the recording will stop immediately as soon as you release the key or the button.
 
-You will see all your recorded actions in the right hand-side panel. You can jump to the action location by clicking 
-on the timestamp. You can also play and delete each recording with the corresponding buttons.
+You will see all your recorded actions in the right hand-side panel. 
+You can jump to the action location by clicking 
+on the timestamp. 
+You can also play and delete each recording with the corresponding buttons.
+If you want to play a recording and also jump to the video location at the same time, right-click the
+recording play button.
 
 Finally, you can listen to the recordings as you watch the video by ticking the box `Play recordings with video`, which 
 is located next to the time label. 
-If the narrations are very close one to the other, you might want to play the video at a slower speed when you play the recording.
-This will keep the narrations aligned with the video. 
+ 
 
 ### Keyboard shortcuts
 

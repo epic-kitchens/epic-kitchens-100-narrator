@@ -451,7 +451,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         # we need to create new images every time otherwise only the last entry will display the image
         a_play_button.set_image(Gtk.Image.new_from_icon_name('media-playback-start', Gtk.IconSize.BUTTON))
         a_delete_button = Gtk.Button()
-        a_delete_button.set_image(Gtk.Image.new_from_icon_name('edit-delete', Gtk.IconSize.BUTTON))
+        a_delete_button.set_image(Gtk.Image.new_from_icon_name('user-trash', Gtk.IconSize.BUTTON))
 
         time_button.connect('button-press-event', self.go_to, time_ms)
         a_play_button.connect('button-press-event', self.play_recording, time_ms)
@@ -476,7 +476,6 @@ class EpicNarrator(Gtk.ApplicationWindow):
             self.refresh_annotation_box()
 
         return box
-
 
     def go_to(self, widget, event, time_ms):
         if time_ms < 0 or time_ms > self.video_length_ms:
@@ -545,6 +544,10 @@ class EpicNarrator(Gtk.ApplicationWindow):
         if recording_path is not None:
             if self.was_playing_before_playing_rec:
                 GLib.idle_add(self.pause_video)
+
+            # right click moves to the video
+            if widget is not None and event is not None and event.button == 3:
+                GLib.idle_add(self.go_to, widget, None, time_ms)
 
             audio_media = self.vlc_instance.media_new_path(recording_path)
             self.rec_player.audio_set_mute(False)
