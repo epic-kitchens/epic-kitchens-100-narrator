@@ -1,13 +1,31 @@
 **Epic-narrator** is a tool written in Python to annotate actions in videos via narration. 
 
-## Installation
+# Installation
 
-[VLC player](https://www.videolan.org/vlc/) must be installed in your system, regardless of your OS.
+[VLC player](https://www.videolan.org/vlc/) must be installed in your system, regardless of your OS
+(unless you use flatpak).
 
+## Linux
 
-### Linux
+### Flatpak
 
-Use conda with the provided environment to install the necessary dependencies:
+Download the flatpak bundled with all the dependencies 
+[here](https://github.com/epic-kitchens/epic-narrator/releases/tag/flatpak)
+
+To use the flatpak bundle you will need to install first [Flatpak](https://flatpak.org/setup/) on your Linux distro: 
+
+to install the narrator flatpak:
+
+```flatpak install epic_narrator.flatpak```
+
+to run it:
+
+```flatpak run uk.ac.bris.epic.narrator```
+
+### Conda
+
+If you don't want to use flatpak, use conda with the provided environment to 
+install the necessary dependencies:
 
 ```bash
 conda env create -f environment.yml
@@ -43,7 +61,7 @@ If you don't see some icons or checkboxes,
 try to install the package [`adwaita-icon-theme-full`](https://packages.ubuntu.com/xenial/gnome/adwaita-icon-theme-full)
 via `apt` or your distribution's package manager.
 
-### Mac OS
+## Mac OS
 
 Use [brew](https://brew.sh/) and pip to install the dependencies. 
 Note that you should use pip3 (i.e. pip for python 3.x)
@@ -68,7 +86,7 @@ Try to export the following variable
 
 *before* installing the python dependencies with `pithon3 -m pip` 
 
-## Usage
+# Usage
 
 Start the program with `python epic_narrator.py`. Once the program has started:
 
