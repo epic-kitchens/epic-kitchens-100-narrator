@@ -405,7 +405,9 @@ class EpicNarrator(Gtk.ApplicationWindow):
         elif event.keyval == Gdk.KEY_M or event.keyval == Gdk.KEY_m:
             self.toggle_audio()
         elif event.keyval == Gdk.KEY_Return:
-            LOG.info("Pressing enter")
+            if not self.recorder.is_recording:
+                LOG.info("Pressing enter")
+
             if self.hold_to_record:
                 if not self.recorder.is_recording:
                     self.start_recording()
@@ -806,6 +808,9 @@ class EpicNarrator(Gtk.ApplicationWindow):
             box = self.annotation_box_map[rec_time]
         else:
             rec_time = self.player.get_time()
+
+            if rec_time < 0:  # happens when we reach the end
+                return
 
             while self.recordings.recording_exists(rec_time):
                 rec_time += 1  # shifting one millisecond
