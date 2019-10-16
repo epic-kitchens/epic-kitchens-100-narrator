@@ -380,11 +380,15 @@ class EpicNarrator(Gtk.ApplicationWindow):
         elif event.keyval == Gdk.KEY_Right:
             self.seek_forwards_released()
         elif event.keyval == Gdk.KEY_Return:
+            LOG.info("Enter released")
             if self.hold_to_record:
                 if self.recorder.is_recording:
                     self.stop_recording()
             else:
                 self.toggle_record()
+        elif event.keyval == Gdk.KEY_o or event.keyval == Gdk.KEY_O:
+            if self.highlighed_recording_time is not None:
+                self.overwrite_recording(self.highlighed_recording_time)
         else:
             return True
 
@@ -401,6 +405,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         elif event.keyval == Gdk.KEY_M or event.keyval == Gdk.KEY_m:
             self.toggle_audio()
         elif event.keyval == Gdk.KEY_Return:
+            LOG.info("Pressing enter")
             if self.hold_to_record:
                 if not self.recorder.is_recording:
                     self.start_recording()
@@ -453,7 +458,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         a_delete_button = Gtk.Button()
         a_delete_button.set_image(Gtk.Image.new_from_icon_name('user-trash', Gtk.IconSize.BUTTON))
 
-        time_button.connect('button-press-event', self.go_to, time_ms)
+        time_button.connect('button-press-event', self.recording_timestamp_pressed, time_ms)
         a_play_button.connect('button-press-event', self.play_recording, time_ms)
         a_delete_button.connect('button-press-event', self.delete_recording, time_ms)
 
@@ -477,6 +482,15 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
         return box
 
+    def recording_timestamp_pressed(self, widget, event, time_ms):
+        if self.recorder.is_recording:
+            return
+
+        self.go_to(widget, event, time_ms)
+
+        if event.button == 3:
+            self.overwrite_recording(time_ms)
+
     def go_to(self, widget, event, time_ms):
         if time_ms < 0 or time_ms > self.video_length_ms:
             return
@@ -492,9 +506,9 @@ class EpicNarrator(Gtk.ApplicationWindow):
         adj = self.annotation_scrolled_window.get_vadjustment()
         adj.set_value(adj.get_upper())
 
-    def scroll_annotations_box_to_rec(self, rec, box=None, highlight=True):
+    def scroll_annotations_box_to_rec(self, rec_time, box=None, highlight=True):
         if box is None:
-            box = self.annotation_box_map[rec] if rec in self.annotation_box_map else None
+            box = self.annotation_box_map[rec_time] if rec_time in self.annotation_box_map else None
 
         if box is not None:
             adj = self.annotation_scrolled_window.get_vadjustment()
@@ -504,7 +518,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
                 adj.set_value(abs(y))
 
                 if highlight:
-                    self.highlight_recording_annotation(box, rec)
+                    self.highlight_recording_annotation(box, rec_time)
 
     def find_closest_rec(self, time_ms, seeking=True):
         if seeking:
@@ -577,6 +591,27 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
             if time_ms == self.highlighed_recording_time:
                 self.reset_highlighted_annotation()
+
+    def overwrite_recording(self, time_ms):
+        if self.recorder.is_recording:
+            return
+
+        if self.player.is_playing():
+            self.pause_video()
+
+        dialog = Gtk.MessageDialog(parent=self, flags=0, message_type=Gtk.MessageType.QUESTION,
+                                   title='Confirm overwrite at {}'.format(ms_to_timestamp(time_ms)))
+        dialog.add_button("No", Gtk.ResponseType.CANCEL)
+        dialog.add_button("Yes", Gtk.ResponseType.OK)
+        dialog.format_secondary_text('Are you sure you want to overwrite the highlighted recording?\n\n'
+                                     'By clicking yes you will start recording immediately.\n\n'
+                                     'You will have to click the recording button or press Enter to stop the recording,'
+                                     'even if you are using the hold-to-record mode')
+        response = dialog.run()
+        dialog.destroy()
+
+        if response == Gtk.ResponseType.OK:
+            self.start_recording(overwrite=True, rec_time=time_ms)
 
     def remove_annotation_box(self, widget, time_ms):
         del self.annotation_box_map[time_ms]
@@ -761,11 +796,20 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self.recorder.stop_recording()
         self.toggle_media_controls(True)
 
-    def start_recording(self):
-        rec_time = self.player.get_time()
+    def start_recording(self, overwrite=False, rec_time=None):
+        if overwrite:
+            # The two conditions below should never happen, so let's use assert
+            assert rec_time is not None, 'Must specify a rec_time time when overriding'
+            assert rec_time in self.annotation_box_map, 'Recording not found in annotation map'
+            box = self.annotation_box_map[rec_time]
+        else:
+            rec_time = self.player.get_time()
 
-        while self.recordings.recording_exists(rec_time):
-            rec_time += 1  # shifting one millisecond
+            while self.recordings.recording_exists(rec_time):
+                rec_time += 1  # shifting one millisecond
+
+            self.add_time_tick(rec_time, colour=self.red_tick_colour)
+            box = self.add_annotation_box(rec_time, new=True)
 
         self.record_button.set_image(self.record_image)
         self.set_monitor_label(True)
@@ -774,9 +818,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         if self.player.is_playing():
             self.pause_video(None)
 
-        path = self.recordings.add_recording(rec_time)
-        self.add_time_tick(rec_time, colour=self.red_tick_colour)
-        box = self.add_annotation_box(rec_time, new=True)
+        path = self.recordings.add_recording(rec_time, overwrite=overwrite)
 
         # we need to wait until the box is actually displayed and sorted in order to scroll to the right position
         while Gtk.events_pending():

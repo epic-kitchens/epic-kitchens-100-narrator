@@ -97,17 +97,19 @@ to avoid clipping.
 Alternatively, if you switch the option `Settings -> Hold to record` you can record while holding down either the record
 button or the enter key. In this case the recording will stop immediately as soon as you release the key or the button.
 
-You will see all your recorded actions in the right hand-side panel. 
-You can jump to the action location by clicking 
-on the timestamp. 
-You can also play and delete each recording with the corresponding buttons.
-If you want to play a recording and also jump to the video location at the same time, right-click the
+### Jumping to, playing, deleting and overwriting recordings
+
+You will see all your recorded actions in the right-hand side panel.
+ 
+- You can jump to the action location by left-clicking on the timestamp.
+- You can overwrite a recording by right-clicking on the timestamp (see more below).
+- You can also play and delete each recording with the corresponding buttons.
+- If you want to play a recording and also jump to the video location at the same time, right-click the
 recording play button.
 
 Finally, you can listen to the recordings as you watch the video by ticking the box `Play recordings with video`, which 
 is located next to the time label. 
  
-
 ### Keyboard shortcuts
 
 - `left arrow`: seek backwards
@@ -116,6 +118,16 @@ is located next to the time label.
 - `enter`: start/stop recording
 - `delete` or `backspace`: delete the highlighted recording
 - `m`: mute/unmute video
+- `o`: overwrite highlighted recording
+ 
+### Overwriting recording
+
+You can override a recording by right-clicking on its timestamp on the recording panel.
+Alternatively, you can press `o`, which will overwrite the highlighted recording.
+
+In any case, you will be asked for a confirmation before overwriting the recording. 
+The recording will start immediately as you confirm. To stop the recording you will have to either
+click the record button or press Enter, even if you are using the hold-to-record mode
  
 ### Resume recording
 

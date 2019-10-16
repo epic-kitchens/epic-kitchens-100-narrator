@@ -19,12 +19,15 @@ class Recordings:
         self._highlighted_rec_index = None
         os.makedirs(self.video_annotations_folder, exist_ok=True)
 
-    def add_recording(self, time):
-        LOG.info("Adding recording at {!r}".format(time))
+    def add_recording(self, time, overwrite=False):
+        LOG.info("Adding recording at {!r} (overwrite={})".format(time, overwrite))
         os.makedirs(self.video_annotations_folder, exist_ok=True)
         path = os.path.join(self.video_annotations_folder, '{}.{}'.format(time, self.audio_extension))
-        self._recordings[time] = path
-        bisect.insort(self._recording_times, time)
+
+        if not overwrite:
+            self._recordings[time] = path
+            bisect.insort(self._recording_times, time)
+
         return path
 
     def delete_recording(self, time):
