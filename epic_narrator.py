@@ -778,23 +778,25 @@ class EpicNarrator(Gtk.ApplicationWindow):
             self.stop_recording()
 
     def stop_recording(self, play_afterwards=True):
-        LOG.info("Stop recording")
+        LOG.info("Stop recording in 0.5 seconds")
+        # time.sleep(0.5)
+        GLib.timeout_add(500, self.stop_recording_proc, play_afterwards)
+
+    def stop_recording_proc(self, play_afterwards=True):
+        self.recorder.stop_recording()
+        LOG.info("Recording stopped")
+
         self.record_button.set_image(self.mic_image)
         self.set_monitor_label(False)
         self.reset_highlighted_annotation()
 
-        # if not self.hold_to_record:
-        LOG.debug("Waiting for mic button to be released")
-        time.sleep(0.5)
-
-        self.stop_recording_proc()
+        self.toggle_media_controls(True)
 
         if play_afterwards:
+
             self.play_video(None)
 
-    def stop_recording_proc(self, play_afterwards=True):
-        self.recorder.stop_recording()
-        self.toggle_media_controls(True)
+        return False  # reset the GLib timer
 
     def start_recording(self, overwrite=False, rec_time=None):
         if overwrite:
@@ -1017,13 +1019,12 @@ class EpicNarrator(Gtk.ApplicationWindow):
         return False
 
     def video_ended_handler(self, data):
-        GLib.timeout_add(100, self.reload_current_video)  # need to call this with some delay otherwise it gets stuck
+        GLib.idle_add(self.reload_for_end_reached)  # need to call this with some delay otherwise it gets stuck
 
-    def reload_current_video(self):
+    def reload_for_end_reached(self):
         self.player.set_media(self.player.get_media())
-        self.slider.set_value(1)
         self.pause_video(None)
-        return False  # return False so we stop this timer
+        self.go_to(None, None, self.video_length_ms-10)
 
     def set_vlc_window(self):
         if sys.platform.startswith('linux'):
