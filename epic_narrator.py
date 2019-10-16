@@ -654,8 +654,9 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
         mic_item = None
 
-        for dev_idx, dev in enumerate(devices):
-            dev_name = dev['name']
+        for dev in devices:
+            dev_idx = dev['dev_idx']
+            dev_name = dev['dev_name']
             mic_item = Gtk.RadioMenuItem(label=dev_name, group=mic_item)
             mic_item.connect('activate', self.microphone_selected, dev_idx)
 

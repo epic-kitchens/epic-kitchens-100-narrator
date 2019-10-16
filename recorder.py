@@ -121,10 +121,18 @@ class Recorder:
 
     @staticmethod
     def get_devices():
-        return sd.query_devices()
+        all_devices = sd.query_devices()
+        input_devices = []
+
+        for dev_idx, dev in enumerate(all_devices):
+            if 0 < dev['max_input_channels'] < 32:  # 32 to avoid getting virtual alsa device
+                input_devices.append({'dev_idx': dev_idx, 'dev_name': dev['name']})
+
+        return input_devices
 
 
 if __name__ == '__main__':
-    print(sd.query_devices())
+    #print(sd.query_devices(kind='input'))
     #recorder = Recorder(set_plot=True)
     #recorder.start_monitor()
+    print(Recorder.get_devices())
