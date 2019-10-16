@@ -5,6 +5,10 @@ jobs:
     machine: true
     steps:
       - checkout
+      - restore_cache:
+          keys:
+            - flatpak-{{ checksum "flatpak/epic.narrator.json" }}-{{ checksum "flatpak/org.videolan.VLC.json" }}-{{ checksum "flatpak/python_libs.json" }}
+            - flatpak-
       - run:
           name: Create Flatpak Builder container
           command: |
@@ -13,15 +17,15 @@ jobs:
                 --volume "${PWD}/":/tmp/narrator/ \
                 --name fb \
                 -it \
-                -d flatpak/flatpak-builder:base \
+                -d willprice/flatpak-builder:base \
                 /bin/bash
 
       - run:
           name: Install Gnome SDK
           command: |
               docker exec -it fb bash -c '\
-                flatpak install -y flathub org.gnome.Sdk//3.32 && \
-                flatpak install -y flathub org.gnome.Platform//3.32'
+                flatpak install -y flathub org.gnome.Sdk//3.32 org.gnome.Platform//3.32\
+              '
 
       - run:
           name: Build narrator flatpak
@@ -34,7 +38,8 @@ jobs:
                   --force-clean \
                   --repo=epic-repo \
                   epic-narrator-build \
-                  epic.narrator.json'
+                  epic.narrator.json\
+           '
 
       - run:
           name: Bundle narrator flatpak
@@ -44,6 +49,17 @@ jobs:
              flatpak build-bundle \
                epic-repo \
                epic_narrator.flatpak \
-               uk.ac.bris.epic.narrator
+               uk.ac.bris.epic.narrator\
+           '
+
+      - save_cache:
+          key: flatpak-{{ checksum "flatpak/epic.narrator.json" }}-{{ checksum "flatpak/org.videolan.VLC.json" }}-{{ checksum "flatpak/python_libs.json" }}
+          paths:
+            - "flatpak/.flatpak-builder"
+            - "flatpak/epic-narrator-build"
+            - "flatpak/epic-repo"
+
       - store_artifacts:
           path: flatpak/epic_narrator.flatpak
+
+
