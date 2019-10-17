@@ -59,7 +59,36 @@ jobs:
             - "flatpak/epic-narrator-build"
             - "flatpak/epic-repo"
 
+      - persist_to_workspace:
+          root: flatpak
+          paths:
+            - epic_narrator.flatpak
+
       - store_artifacts:
           path: flatpak/epic_narrator.flatpak
 
+  publish-github-release:
+    docker:
+      - image: circleci/golang
+    steps:
+      - attach_workspace:
+          at: ./artifacts
+      - run:
+          name: "Publish Release on GitHub"
+          command: |
+            go get github.com/tcnksm/ghr
+            VERSION=latest
+            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ./artifacts/
 
+workflows:
+  version: 2
+  main:
+    jobs:
+      - build
+      - publish-github-release:
+          context: GH Deploy
+          requires:
+            - build
+          filters:
+            branches:
+              only: master
