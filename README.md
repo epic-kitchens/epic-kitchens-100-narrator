@@ -1,4 +1,7 @@
-**Epic-narrator** is a tool written in Python to annotate actions in videos via narration. 
+# EPIC Narrator
+[![CircleCI](https://circleci.com/gh/epic-kitchens/epic-narrator.svg?style=svg)](https://circleci.com/gh/epic-kitchens/epic-narrator)
+
+**EPIC-narrator** is a tool written in Python to annotate actions in videos via narration. 
 
 # Installation
 
