@@ -31,7 +31,7 @@ if sys.platform.startswith('darwin'):
 else:
     plt.switch_backend('GTK3Agg')
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__name__))
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 LOG = logging.getLogger('epic_narrator')
 
 parser = argparse.ArgumentParser(
