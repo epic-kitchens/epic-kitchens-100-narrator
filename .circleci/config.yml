@@ -1,0 +1,65 @@
+version: 2
+jobs:
+  build:
+    working_directory: ~/repo
+    machine: true
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - flatpak-{{ checksum "flatpak/epic.narrator.json" }}-{{ checksum "flatpak/org.videolan.VLC.json" }}-{{ checksum "flatpak/python_libs.json" }}
+            - flatpak-
+      - run:
+          name: Create Flatpak Builder container
+          command: |
+              docker run \
+                --privileged \
+                --volume "${PWD}/":/tmp/narrator/ \
+                --name fb \
+                -it \
+                -d willprice/flatpak-builder:base \
+                /bin/bash
+
+      - run:
+          name: Install Gnome SDK
+          command: |
+              docker exec -it fb bash -c '\
+                flatpak install -y flathub org.gnome.Sdk//3.32 org.gnome.Platform//3.32\
+              '
+
+      - run:
+          name: Build narrator flatpak
+          command: |
+           docker exec -it fb bash -c '\
+             cd /tmp/narrator/flatpak && \
+             flatpak-builder \
+                  --arch=x86_64 \
+                  --ccache \
+                  --force-clean \
+                  --repo=epic-repo \
+                  epic-narrator-build \
+                  epic.narrator.json\
+           '
+
+      - run:
+          name: Bundle narrator flatpak
+          command: |
+           docker exec -it fb bash -c '\
+             cd /tmp/narrator/flatpak && \
+             flatpak build-bundle \
+               epic-repo \
+               epic_narrator.flatpak \
+               uk.ac.bris.epic.narrator\
+           '
+
+      - save_cache:
+          key: flatpak-{{ checksum "flatpak/epic.narrator.json" }}-{{ checksum "flatpak/org.videolan.VLC.json" }}-{{ checksum "flatpak/python_libs.json" }}
+          paths:
+            - "flatpak/.flatpak-builder"
+            - "flatpak/epic-narrator-build"
+            - "flatpak/epic-repo"
+
+      - store_artifacts:
+          path: flatpak/epic_narrator.flatpak
+
+
