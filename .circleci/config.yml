@@ -89,6 +89,6 @@ workflows:
           context: GH Deploy
           requires:
             - build
-          #filters:
-          #  branches:
-          #    only: master
+          filters:
+            branches:
+              only: master
