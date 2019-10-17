@@ -297,6 +297,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
         self.last_played_rec = None
         self.is_ui_ready = True
+        self.holding_rec = False
 
     def draw_video_area(self, widget, cairo_ctx):
         # this fixes the broken video area that might happen when resizing the window, depending on the system
@@ -405,8 +406,14 @@ class EpicNarrator(Gtk.ApplicationWindow):
         elif event.keyval == Gdk.KEY_M or event.keyval == Gdk.KEY_m:
             self.toggle_audio()
         elif event.keyval == Gdk.KEY_Return:
-            if not self.recorder.is_recording:
-                LOG.info("Pressing enter")
+            if self.holding_rec:
+                return True
+
+            # We can't rely only on the recorder variable to avoid ghosting recordings, because this code can be called
+            # multiple times before the recording starts. We use a simple variable here
+            # this will be set to False when actually finishing the recording
+            self.holding_rec = True
+            LOG.info("Pressing enter")
 
             if self.hold_to_record:
                 if not self.recorder.is_recording:
@@ -762,7 +769,8 @@ class EpicNarrator(Gtk.ApplicationWindow):
     def record_button_clicked(self, *args):
         LOG.info("Record button pressed")
         if self.hold_to_record:
-            if not self.recorder.is_recording:
+            if not self.holding_rec and not self.recorder.is_recording:
+                self.holding_rec = True
                 self.start_recording()
         else:
             self.toggle_record()
@@ -796,8 +804,9 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self.toggle_media_controls(True)
 
         if play_afterwards:
-
             self.play_video(None)
+
+        self.holding_rec = False
 
         return False  # reset the GLib timer
 
