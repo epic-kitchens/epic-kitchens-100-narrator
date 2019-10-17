@@ -8,6 +8,8 @@ import threading
 import time
 import traceback
 import argparse
+from logging.handlers import RotatingFileHandler
+
 import vlc
 import numpy as np
 import matplotlib
@@ -62,6 +64,13 @@ class EpicNarrator(Gtk.ApplicationWindow):
         Gtk.ApplicationWindow.__init__(self, title='Epic Narrator')
         gtk_settings = Gtk.Settings.get_default()
         gtk_settings.set_property("gtk-application-prefer-dark-theme", False)
+
+        try:
+            # set an icon if running from the command line
+            # this won't work inside flatpak, but in flatpak we have a .desktop file, so we just keep going
+            self.set_icon_from_file(os.path.join("data", "epic.png"))
+        except Exception:
+            pass
 
         self.is_ui_ready = False
         self.settings = Settings()
@@ -1214,15 +1223,23 @@ def main(args):
 
 def setup_logging(args):
     log_level = getattr(logging, args.verbosity.upper())
+
+    '''
     if args.log_file is not None:
         logging.basicConfig(filename=args.log_file)
     else:
         logging.basicConfig()
+    '''
+    log_path = os.path.join(Settings.get_epic_narrator_directory(),
+                            'narrator.log') if args.log_file is None else args.log_file
+
+    # add a rotating handler
+    handler = RotatingFileHandler(log_path, maxBytes=5000000, backupCount=3)
+    LOG.addHandler(handler)
     LOG.setLevel(log_level)
 
 
 if __name__ == '__main__':
     faulthandler.enable()
-    # GObject.threads_init() not needed for PyGObject >= 3.10.2
     main(parser.parse_args())
 

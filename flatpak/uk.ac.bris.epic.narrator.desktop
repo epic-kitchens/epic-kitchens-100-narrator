@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Terminal=false
+Categories=AudioVideo
+Exec=uk.ac.bris.epic.narrator.sh
+Name=EPIC Narrator
+Icon=uk.ac.bris.epic.narrator

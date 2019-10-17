@@ -18,7 +18,8 @@ class Settings:
 
         return settings
 
-    def get_epic_narrator_directory(self):
+    @staticmethod
+    def get_epic_narrator_directory():
         settings_dir_path = os.path.join(str(Path.home()), 'epic_narrator')
 
         if not os.path.exists(settings_dir_path):

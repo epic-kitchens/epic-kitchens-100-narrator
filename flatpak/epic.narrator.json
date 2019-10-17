@@ -3,7 +3,7 @@
     "runtime": "org.gnome.Platform",
     "runtime-version": "3.32",
     "sdk": "org.gnome.Sdk",
-    "command": "start_narrator.sh",   
+    "command": "uk.ac.bris.epic.narrator.sh",
     "modules": [        
         "python_libs.json",
         {
@@ -28,11 +28,18 @@
             "name": "epic_narrator",
             "buildsystem": "simple",
             "build-commands": [
-                "install -D start_narrator.sh /app/bin/start_narrator.sh",
+                "install -D uk.ac.bris.epic.narrator.sh /app/bin/uk.ac.bris.epic.narrator.sh",
                 "install -D epic_narrator.py /app/bin/epic_narrator.py",
                 "install -D recorder.py /app/bin/recorder.py",
                 "install -D recordings.py /app/bin/recordings.py",
-                "install -D settings.py /app/bin/settings.py"
+                "install -D settings.py /app/bin/settings.py",
+                "install -D epic-24.png /app/share/icons/hicolor/24x24/apps/uk.ac.bris.epic.narrator.png",
+                "install -D epic-32.png /app/share/icons/hicolor/32x32/apps/uk.ac.bris.epic.narrator.png",
+                "install -D epic-48.png /app/share/icons/hicolor/48x48/apps/uk.ac.bris.epic.narrator.png",
+                "install -D epic-64.png /app/share/icons/hicolor/64x64/apps/uk.ac.bris.epic.narrator.png",
+                "install -D epic-128.png /app/share/icons/hicolor/128x128/apps/uk.ac.bris.epic.narrator.png",
+                "install -D epic-256.png /app/share/icons/hicolor/256x256/apps/uk.ac.bris.epic.narrator.png",
+                "install -D uk.ac.bris.epic.narrator.desktop /app/share/applications/uk.ac.bris.epic.narrator.desktop"
             ],
             "sources": [
                 {
@@ -53,7 +60,39 @@
                 },
                 {
                     "type": "file",
-                    "path": "start_narrator.sh"
+                    "path": "uk.ac.bris.epic.narrator.sh"
+                },
+                {
+                    "type": "file",
+                    "path": "../data/epic-24.png"
+                },
+                {
+                    "type": "file",
+                    "path": "../data/epic-32.png"
+                },
+                {
+                    "type": "file",
+                    "path": "../data/epic-48.png"
+                },
+                {
+                    "type": "file",
+                    "path": "../data/epic-64.png"
+                },
+                {
+                    "type": "file",
+                    "path": "../data/epic-128.png"
+                },
+                {
+                    "type": "file",
+                    "path": "../data/epic-256.png"
+                },
+                {
+                    "type": "file",
+                    "path": "../data/epic-512.png"
+                },
+                {
+                    "type": "file",
+                    "path": "uk.ac.bris.epic.narrator.desktop"
                 }
             ]
         }

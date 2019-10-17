@@ -21,7 +21,8 @@ to install the narrator flatpak:
 
 ```flatpak install epic_narrator.flatpak```
 
-to run it:
+to run it, just search `EPIC Narrator` in your apps. 
+Alternatively, you can run it from the command line like this:
 
 ```flatpak run uk.ac.bris.epic.narrator```
 
@@ -196,3 +197,11 @@ The narrator will save some settings under a directory named `epic_narrator` aut
 
 The settings will save the path of the video you narrated last, as well as the output path and, the microphone id and a
 few other things. 
+
+## Logging
+
+The narrator will write event logs to a file under the same settings directory,
+i.e. `<your_home>/epic_narrator/narrator.log`.
+
+The logs are saved in a rotating manner. 
+Log files are limited to a maximum of 5MB, for a maximum of 3 files.
