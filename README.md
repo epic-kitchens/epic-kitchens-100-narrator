@@ -13,7 +13,7 @@
 ### Flatpak
 
 Download the flatpak bundled with all the dependencies 
-[here](https://github.com/epic-kitchens/epic-narrator/releases/tag/flatpak)
+[here](https://github.com/epic-kitchens/epic-narrator/releases/download/latest/epic_narrator.flatpak)
 
 To use the flatpak bundle you will need to install first [Flatpak](https://flatpak.org/setup/) on your Linux distro: 
 
