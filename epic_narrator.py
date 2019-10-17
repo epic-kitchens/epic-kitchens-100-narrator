@@ -77,8 +77,11 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
         self.recorder = self.set_mic(mic_device)
         hold_to_record = self.settings.get_setting('hold_to_record')
+        play_after_delete = self.settings.get_setting('play_after_delete')
         self.hold_to_record = False if hold_to_record is None else hold_to_record
+        self.play_after_delete = False if play_after_delete is None else play_after_delete
         self.settings.update_settings(hold_to_record=self.hold_to_record)
+        self.settings.update_settings(play_after_delete=self.play_after_delete)
 
         self.recordings = None
         self.video_path = None
@@ -109,7 +112,13 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self.hold_to_record_menu_item = Gtk.CheckMenuItem(label='Hold to record')
         self.hold_to_record_menu_item.set_active(self.hold_to_record)
         self.hold_to_record_menu_item.connect('toggled', self.hold_to_record_toggled)
+
+        self.play_after_delete_menu_item = Gtk.CheckMenuItem(label='Play video after deleting recording')
+        self.play_after_delete_menu_item.set_active(self.play_after_delete)
+        self.play_after_delete_menu_item.connect('toggled', self.play_after_delete_toggled)
+
         self.settings_menu.append(self.hold_to_record_menu_item)
+        self.settings_menu.append(self.play_after_delete_menu_item)
         self.settings_menu_item = Gtk.MenuItem(label='Settings')
         self.settings_menu_item.set_submenu(self.settings_menu)
         self.menu_bar.append(self.settings_menu_item)
@@ -422,24 +431,8 @@ class EpicNarrator(Gtk.ApplicationWindow):
             if self.recordings.empty():
                 pass
 
-            if self.player.is_playing():
-                paused = True
-                self.pause_video()
-            else:
-                paused = False
-
-            if self.recorder.is_recording:
-                self.stop_recording(play_afterwards=paused)
-                current_recording = True
-            else:
-                current_recording = False
-
             if self.highlighed_recording_time is not None:
-                self.delete_recording(self.highlighted_recording_button, None, self.highlighed_recording_time,
-                                      current_recording=current_recording)
-
-            if paused:
-                self.play_video()
+                self.delete_recording(self.highlighted_recording_button, None, self.highlighed_recording_time)
         else:
             pass
 
@@ -451,6 +444,10 @@ class EpicNarrator(Gtk.ApplicationWindow):
     def hold_to_record_toggled(self, args):
         self.hold_to_record = self.hold_to_record_menu_item.get_active()
         self.settings.update_settings(hold_to_record=self.hold_to_record)
+
+    def play_after_delete_toggled(self, args):
+        self.play_after_delete = self.play_after_delete_menu_item.get_active()
+        self.settings.update_settings(play_after_delete=self.play_after_delete)
 
     def add_annotation_box(self, time_ms, new=False):
         box = Gtk.ButtonBox()
@@ -579,7 +576,16 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
             GLib.idle_add(self.rec_player.play)
 
-    def delete_recording(self, widget, event, time_ms, current_recording=False):
+    def delete_recording(self, widget, event, time_ms):
+        if self.player.is_playing():
+            self.pause_video()
+
+        if self.recorder.is_recording:
+            self.stop_recording()
+            current_recording = True
+        else:
+            current_recording = False
+
         if current_recording:
             msg = 'Are you sure you want to delete the current recording?'
         else:
@@ -600,6 +606,9 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
             if time_ms == self.highlighed_recording_time:
                 self.reset_highlighted_annotation()
+
+            if self.play_after_delete:
+                self.play_video()
 
     def overwrite_recording(self, time_ms):
         if self.recorder.is_recording:
@@ -932,6 +941,13 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
     def slider_clicked(self, *args):
         LOG.info("Slider clicked")
+
+        if self.player.is_playing():
+            self.pause_video()
+            self.was_playing_before_seek = True
+        else:
+            self.was_playing_before_seek = False
+
         self.is_seeking = True
         self.recordings.reset_highlighted()
 
@@ -940,6 +956,9 @@ class EpicNarrator(Gtk.ApplicationWindow):
         slider_pos_ms = int(self.slider.get_value())
         self.player.set_time(slider_pos_ms)
         self.is_seeking = False
+
+        if self.was_playing_before_seek:
+            self.play_video()
 
     def pause_video(self, *args):
         LOG.info("Pause video")
@@ -1008,7 +1027,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         current_time_ms = self.player.get_time()
         self.slider.set_value(current_time_ms)
         self.update_time_label(current_time_ms)
-        closest_rec = self.find_closest_rec(current_time_ms, seeking=False)
+        closest_rec = self.find_closest_rec(current_time_ms, seeking=self.is_seeking)
         self.scroll_annotations_box_to_rec(closest_rec)
 
         if self.play_recs_with_video and not self.is_seeking and self.highlighed_recording_time is not None:
