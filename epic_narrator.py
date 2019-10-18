@@ -240,8 +240,12 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self.right_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self.annotation_box = Gtk.ListBox()
         self.annotation_box.set_selection_mode(Gtk.SelectionMode.NONE)
-        # removing style to remove background
-        self.annotation_box.get_style_context().remove_class('list')  # TODO make it work with flapak build
+        # removing background
+        provider = Gtk.CssProvider()
+        provider.load_from_data(b".list {background-color: transparent}")
+        context = self.annotation_box.get_style_context()
+        context.add_class('list')
+        context.add_provider(provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
         self.annotation_scrolled_window = Gtk.ScrolledWindow()
         self.annotation_scrolled_window.set_border_width(10)
@@ -647,6 +651,11 @@ class EpicNarrator(Gtk.ApplicationWindow):
     def remove_annotation_box(self, widget, time_ms):
         del self.annotation_box_map[time_ms]
         # we need to get the parent which is the list row box
+        # widget is a button box, its parent is a list row box
+
+        for w in widget.get_children():
+            w.destroy()
+
         self.annotation_box.remove(widget.get_parent())
         # self.refresh_annotation_box()
 
@@ -860,12 +869,12 @@ class EpicNarrator(Gtk.ApplicationWindow):
             # this will scroll automatically to the box once properly rendered
             box = self.add_annotation_box(rec_time, rec_idx, new=True)
 
+        self.recorder.start_recording(path)  # start recording before switching the monitor red to minimise clipping
+
         self.record_button.set_image(self.record_image)
         self.set_monitor_label(True)
         self.toggle_media_controls(False)
         self.highlight_recording_annotation(box, rec_time, current_recording=True)
-
-        self.recorder.start_recording(path)
 
     def toggle_media_controls(self, active):
         self.slider.set_sensitive(active)
