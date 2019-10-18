@@ -238,7 +238,11 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
         # annotation box
         self.right_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.annotation_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self.annotation_box = Gtk.ListBox()
+        self.annotation_box.set_selection_mode(Gtk.SelectionMode.NONE)
+        # removing style to remove background
+        self.annotation_box.get_style_context().remove_class('list')  # TODO make it work with flapak build
+
         self.annotation_scrolled_window = Gtk.ScrolledWindow()
         self.annotation_scrolled_window.set_border_width(10)
         self.annotation_scrolled_window.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
@@ -248,8 +252,6 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self.right_box.set_size_request(300, self.annotation_box_height)
         self.highlighted_recording_button = None
         self.highlighed_recording_time = None
-
-        # self.annotation_box.connect('size-allocate', self.scroll_annotations_to_bottom)
 
         self.video_path_label = Gtk.Label(label=' ')
         self.recordings_path_label = Gtk.Label(label=' ')
@@ -458,7 +460,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         self.play_after_delete = self.play_after_delete_menu_item.get_active()
         self.settings.update_settings(play_after_delete=self.play_after_delete)
 
-    def add_annotation_box(self, time_ms, new=False):
+    def add_annotation_box(self, time_ms, rec_idx, new=False, last=False):
         box = Gtk.ButtonBox()
 
         time_button = Gtk.Button()
@@ -476,6 +478,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         time_button.connect('button-press-event', self.recording_timestamp_pressed, time_ms)
         a_play_button.connect('button-press-event', self.play_recording, time_ms)
         a_delete_button.connect('button-press-event', self.delete_recording, time_ms)
+        box.connect('size-allocate', self.new_annotation_box_added, time_ms, new)
 
         box.pack_start(time_button, False, False, 0)
         box.pack_start(a_play_button, False, False, 0)
@@ -489,13 +492,13 @@ class EpicNarrator(Gtk.ApplicationWindow):
         a_delete_button.set_can_focus(False)
 
         self.annotation_box_map[time_ms] = box
-        self.annotation_box.pack_start(box, False, True, 0)
-        self.annotation_box.show_all()
-
-        if new:
-            self.refresh_annotation_box()
+        self.annotation_box.insert(box, rec_idx)
 
         return box
+
+    def new_annotation_box_added(self, widget, event, time_ms, new):
+        if new:
+            self.scroll_annotations_box_to_rec(time_ms, highlight=False)
 
     def recording_timestamp_pressed(self, widget, event, time_ms):
         if self.recorder.is_recording:
@@ -518,7 +521,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
             self.highlight_recording_annotation(widget.get_parent(), time_ms)
 
     def scroll_annotations_to_bottom(self, *args):
-        adj = self.annotation_scrolled_window.get_vadjustment()
+        adj = self.annotation_box.get_adjustment()
         adj.set_value(adj.get_upper())
 
     def scroll_annotations_box_to_rec(self, rec_time, box=None, highlight=True):
@@ -526,8 +529,9 @@ class EpicNarrator(Gtk.ApplicationWindow):
             box = self.annotation_box_map[rec_time] if rec_time in self.annotation_box_map else None
 
         if box is not None:
-            adj = self.annotation_scrolled_window.get_vadjustment()
+            adj = self.annotation_box.get_adjustment()
             unset, y = self.annotation_box.translate_coordinates(box, 0, 0)
+            unset = False if unset < 1 else True
 
             if not unset:
                 adj.set_value(abs(y))
@@ -642,21 +646,24 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
     def remove_annotation_box(self, widget, time_ms):
         del self.annotation_box_map[time_ms]
-        self.annotation_box.remove(widget)
-        self.refresh_annotation_box()
-        widget.destroy()
+        # we need to get the parent which is the list row box
+        self.annotation_box.remove(widget.get_parent())
+        # self.refresh_annotation_box()
 
     def remove_all_annotation_boxes(self):
         for w in self.annotation_box.get_children():
             self.annotation_box.remove(w)
-            w.destroy()
+            # w.destroy()
 
     def refresh_annotation_box(self):
+        raise Exception('You should not use this because we are using listbox now')
+        '''
         order = sorted(list(self.annotation_box_map.keys()))
 
         for time_ms, widget in self.annotation_box_map.items():
             position = order.index(time_ms)
             self.annotation_box.reorder_child(widget, position)
+        '''
 
     def add_time_tick(self, time_ms, colour=None):
         self.slider.add_mark(time_ms, Gtk.PositionType.TOP, None)
@@ -829,11 +836,15 @@ class EpicNarrator(Gtk.ApplicationWindow):
         return False  # reset the GLib timer
 
     def start_recording(self, overwrite=False, rec_time=None):
+        if self.player.is_playing():
+            self.pause_video(None)
+
         if overwrite:
             # The two conditions below should never happen, so let's use assert
             assert rec_time is not None, 'Must specify a rec_time time when overriding'
             assert rec_time in self.annotation_box_map, 'Recording not found in annotation map'
             box = self.annotation_box_map[rec_time]
+            path, _ = self.recordings.add_recording(rec_time, overwrite=overwrite)
         else:
             rec_time = self.player.get_time()
 
@@ -843,23 +854,15 @@ class EpicNarrator(Gtk.ApplicationWindow):
             while self.recordings.recording_exists(rec_time):
                 rec_time += 1  # shifting one millisecond
 
+            path, rec_idx = self.recordings.add_recording(rec_time, overwrite=overwrite)
             self.add_time_tick(rec_time, colour=self.red_tick_colour)
-            box = self.add_annotation_box(rec_time, new=True)
+
+            # this will scroll automatically to the box once properly rendered
+            box = self.add_annotation_box(rec_time, rec_idx, new=True)
 
         self.record_button.set_image(self.record_image)
         self.set_monitor_label(True)
         self.toggle_media_controls(False)
-
-        if self.player.is_playing():
-            self.pause_video(None)
-
-        path = self.recordings.add_recording(rec_time, overwrite=overwrite)
-
-        # we need to wait until the box is actually displayed and sorted in order to scroll to the right position
-        while Gtk.events_pending():
-            Gtk.main_iteration()
-
-        self.scroll_annotations_box_to_rec(rec_time, box=box, highlight=False)
         self.highlight_recording_annotation(box, rec_time, current_recording=True)
 
         self.recorder.start_recording(path)
@@ -1177,8 +1180,8 @@ class EpicNarrator(Gtk.ApplicationWindow):
         if self.recordings.annotations_exist():
             self.recordings.load_annotations()
 
-            for rec_ms in self.recordings.get_recordings_times():
-                self.add_annotation_box(rec_ms)
+            for rec_idx, rec_ms in enumerate(self.recordings.get_recordings_times()):
+                self.add_annotation_box(rec_ms, rec_idx)
                 self.add_time_tick(rec_ms, colour=self.red_tick_colour)
 
         playback_speed = self.settings.get_setting('playback_speed')

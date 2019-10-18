@@ -26,9 +26,15 @@ class Recordings:
 
         if not overwrite:
             self._recordings[time] = path
-            bisect.insort(self._recording_times, time)
+            # the insort below is equivalent to the two calls afterwards. We need the rec index, so we separate
+            # the two
+            # bisect.insort(self._recording_times, time)
+            rec_index = bisect.bisect_left(self._recording_times, time)
+            self._recording_times.insert(rec_index, time)
+        else:
+            rec_index = None
 
-        return path
+        return path, rec_index
 
     def delete_recording(self, time):
         if time in self._recordings:
@@ -132,6 +138,17 @@ class Recordings:
                 return None
         else:
             return None
+
+    def get_next_from_index(self, index):
+        idx = max(0, min(index+1, len(self._recording_times)-1))
+        return self._recording_times[idx]
+
+    def get_previous_from_index(self, index):
+        idx = max(0, min(index-1, len(self._recording_times) - 1))
+        return self._recording_times[idx]
+
+    def is_last_recording(self, rec_time):
+        return self._recording_times[-1] == rec_time
 
     def move_highlighted_next(self):
         if self._highlighted_rec_index is not None and self._highlighted_rec_index + 1 < len(self._recording_times):
