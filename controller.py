@@ -1,8 +1,11 @@
+import ctypes
 import logging
 import os
+import sys
 import traceback
 
 import gi
+import vlc
 
 from recordings import Recordings
 
@@ -24,6 +27,9 @@ class Controller:
         self.is_video_loaded = False
         self.video_path = None  # TODO load things from settings
         self.output_path = None
+        self.vlc_instance = None
+        self.player = None
+        self.rec_player = None
 
     def create_recorder(self):
         saved_microphone = self.settings.get_setting('microphone')
@@ -85,19 +91,13 @@ class Controller:
         '''
 
         self.recorder.close_stream()
+        self.player.stop()
+        self.vlc_instance.release()
         Gtk.main_quit()
-        # TODO update these
-        # narrator.is_shutting_down = True
-        # narrator.player.stop()
-        # narrator.vlc_instance.release()
-
-    def prepare_monitor_figure(self):
-        return self.recorder.prepare_monitor_fig()
 
     def change_mic(self, mic_id):
-        # TODO STOP RECORDING
         if self.recorder.is_recording:
-            pass
+            self.recorder.stop_recording()
 
         try:
             self.recorder.change_device(mic_id)
@@ -127,5 +127,79 @@ class Controller:
         self.settings.update_settings(last_video=video_path)
         self.settings.update_settings(video_folder=video_folder, output_path=output_path)
 
+        self.setup_narrator(self.video_path)
+
+    def ui_video_area_ready(self, widget):
+        self.setup_vlc_player(widget)
+
+    def setup_vlc_player(self, widget):
+        self.vlc_instance = vlc.Instance('--no-xlib')
+        self.player = self.vlc_instance.media_player_new()
+        self.set_vlc_window(widget)
+        main_events = self.player.event_manager()
+
+        # from lib vlc documentation. Make sure you don't use wait anywhere in the program
+        '''
+        while LibVLC is active, the wait() function shall not be called, and
+        any call to waitpid() shall use a strictly positive value for the first
+        parameter (i.e. the PID). Failure to follow those rules may lead to a
+        deadlock or a busy loop.
+        '''
+
+        # VERY IMPORTANT: functions attached to vlc events will be run in a separate thread,
+        # so implement all thread safety things you need, i.e. use glib.idle_add() to do stuff
+        #main_events.event_attach(vlc.EventType.MediaPlayerPositionChanged, self.video_moving_handler)
+        #main_events.event_attach(vlc.EventType.MediaPlayerEndReached, self.video_ended_handler)
+
+        self.rec_player = self.vlc_instance.media_player_new()
+        rec_events = self.rec_player.event_manager()
+        #rec_events.event_attach(vlc.EventType.MediaPlayerStopped, self.finished_playing_recording_handler)
+
+        # TODO connect vlc events
+
+    def set_vlc_window(self, widget):
+        if sys.platform.startswith('linux'):
+            win_id = widget.get_window().get_xid()
+            self.player.set_xwindow(win_id)
+        elif sys.platform.startswith('darwin'):
+            # ugly bit to get window if on mac os
+            window = widget.get_property('window')
+            ctypes.pythonapi.PyCapsule_GetPointer.restype = ctypes.c_void_p
+            ctypes.pythonapi.PyCapsule_GetPointer.argtypes = [ctypes.py_object]
+            gpointer = ctypes.pythonapi.PyCapsule_GetPointer(window.__gpointer__, None)
+            libgdk = ctypes.CDLL("libgdk-3.dylib")
+            libgdk.gdk_quartz_window_get_nsview.restype = ctypes.c_void_p
+            libgdk.gdk_quartz_window_get_nsview.argtypes = [ctypes.c_void_p]
+            handle = libgdk.gdk_quartz_window_get_nsview(gpointer)
+            self.player.set_nsobject(int(handle))
+        elif sys.platform.startswith('win'):
+            window = widget.get_property('window')
+            ctypes.pythonapi.PyCapsule_GetPointer.restype = ctypes.c_void_p
+            ctypes.pythonapi.PyCapsule_GetPointer.argtypes = [ctypes.py_object]
+            drawingarea_gpointer = ctypes.pythonapi.PyCapsule_GetPointer(window.__gpointer__, None)
+            gdkdll = ctypes.CDLL("libgdk-3-0.dll")
+            handle = gdkdll.gdk_win32_window_get_handle(drawingarea_gpointer)
+            self.player.set_hwnd(int(handle))
+        else:
+            raise Exception('Cannot deal with this platform: {}'.format(sys.platform))
+
+    def setup_narrator(self, video_path):
+        media = self.vlc_instance.media_new_path(video_path)
+        self.player.set_mrl(media.get_mrl())
+
+        self.is_video_loaded = False
+        # self.mute_video() # TODO fix this
+
+        playback_speed = self.get_setting('playback_speed', 1)
+
+        if type(playback_speed) == float and 0 <= playback_speed <= 1:
+            self.player.set_rate(playback_speed)
+
+        #self.player.play()
+
+        self.is_video_loaded = False
+        self.mute_video()
+
+        # TODO add mute and playback stuff and continue from here
 
 

@@ -42,7 +42,7 @@ class MainWindow(Gtk.ApplicationWindow):
 
         # setting menus
         self.menu_bar = Menu(controller, self)
-        self.video_area = VideoArea(self.single_window)
+        self.video_area = VideoArea(self.controller, self.single_window)
 
         # adding speed boxes, time label and play with rec checkbox
         self.speed_time_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
@@ -311,11 +311,13 @@ class Menu(Gtk.MenuBar):
 
         return path
 
+
 class VideoArea:
-    def __init__(self, single_window, width=900, height=400):
+    def __init__(self, controller, single_window, width=900, height=400):
         self.video_width = width
         self.video_height = height
         self.single_window = single_window
+        self.controller = controller
 
         if self.single_window:
             self.area = Gtk.DrawingArea()
@@ -324,9 +326,7 @@ class VideoArea:
             self.area.set_deletable(False)
 
         self.area.set_size_request(self.video_width, self.video_height)
-
-        # TODO connect this
-        #self.area.connect('realize', self.video_area_ready)
+        self.area.connect('realize', self.ready)
 
         if self.single_window:
             # self.video_area.connect('configure_event', self.video_area_resized)
@@ -336,6 +336,9 @@ class VideoArea:
         # this fixes the broken video area that might happen when resizing the window, depending on the system
         cairo_ctx.set_source_rgb(0, 0, 0)
         cairo_ctx.paint()
+
+    def ready(self, widget):
+        self.controller.ui_video_area_ready(widget)
 
 
 class PlaybackController(Gtk.ButtonBox):
