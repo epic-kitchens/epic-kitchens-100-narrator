@@ -30,7 +30,10 @@
             "build-commands": [
                 "install -D uk.ac.bris.epic.narrator.sh /app/bin/uk.ac.bris.epic.narrator.sh",
                 "install -D epic_narrator.py /app/bin/epic_narrator.py",
+                "install -D ui.py /app/bin/ui.py",
+                "install -D controller.py /app/bin/controller.py",
                 "install -D recorder.py /app/bin/recorder.py",
+                "install -D player.py /app/bin/player.py",
                 "install -D recordings.py /app/bin/recordings.py",
                 "install -D settings.py /app/bin/settings.py",
                 "install -D epic-24.png /app/share/icons/hicolor/24x24/apps/uk.ac.bris.epic.narrator.png",
@@ -45,6 +48,18 @@
                 {
                     "type": "file",
                     "path": "../epic_narrator.py"
+                },
+                {
+                    "type": "file",
+                    "path": "../ui.py"
+                },
+                {
+                    "type": "file",
+                    "path": "../controller.py"
+                },
+                {
+                    "type": "file",
+                    "path": "../player.py"
                 },
                 {
                     "type": "file",

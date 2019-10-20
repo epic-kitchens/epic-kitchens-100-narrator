@@ -8,7 +8,7 @@ LOG = logging.getLogger('epic_narrator.recorder')
 
 
 class Recorder:
-    def __init__(self, channels=[1], device_id=0, window=200, downsample=10):
+    def __init__(self, channels=[1], device_id=sd.default.device[0], window=200, downsample=10):
         LOG.info("Creating recorder for device id {}".format(device_id))
         self.mapping = [c - 1 for c in channels]  # Channel numbers start with 1
         self.q = queue.Queue()
