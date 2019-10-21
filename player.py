@@ -1,5 +1,6 @@
 import ctypes
 import sys
+import threading
 
 import vlc
 import gi
@@ -15,10 +16,10 @@ class Player:
         self.set_vlc_window(widget)
         self.mute_video()
         main_events = self.video_player.event_manager()
-        self._timeout_id_backwards = 0
-        self._timeout_id_forwards = 0
+        self._seeking_timeout = 0
         self.was_playing_before_seek = None
         self._is_seeking = False
+        self.is_dragging = False
         self.seek_step = 500  # milliseconds
         self.seek_refresh = 50  # milliseconds
 
@@ -29,7 +30,6 @@ class Player:
         parameter (i.e. the PID). Failure to follow those rules may lead to a
         deadlock or a busy loop.
         '''
-
 
         # VERY IMPORTANT: functions attached to vlc events will be run in a separate thread,
         # so implement all thread safety things you need, i.e. use glib.idle_add() to do stuff
@@ -115,47 +115,28 @@ class Player:
         return self.video_player.audio_get_mute()
 
     def is_seeking(self):
-        return self._is_seeking or self._timeout_id_backwards != 0 or self._timeout_id_forwards != 0
+        return self._is_seeking or self._seeking_timeout != 0
 
     def video_moving_handler(self, *args):
         # this will be run in the main thread when possible
         GLib.idle_add(self.video_moving, priority=GLib.PRIORITY_HIGH)
 
     def video_moving(self):
-        self.controller.signal_sender.emit('video_moving', self.get_current_position(), False)
+        self.controller.signal_sender.emit('video_moving', self.get_current_position(), self.is_seeking())
 
-    def start_seek_forwards(self):
+    def start_seek(self, direction):
         if self.video_player.is_playing():
             self.pause_video()
             self.was_playing_before_seek = True
         else:
             self.was_playing_before_seek = False
 
-        self._timeout_id_forwards = GLib.timeout_add(self.seek_refresh, self.seek, self.seek_step)
+        step = self.seek_step if direction == 'forward' else - self.seek_step
+        self._seeking_timeout = GLib.timeout_add(self.seek_refresh, self.seek, step)
 
-    def start_seek_backwards(self):
-        if self.video_player.is_playing():
-            self.pause_video()
-            self.was_playing_before_seek = True
-        else:
-            self.was_playing_before_seek = False
-
-        self._timeout_id_backwards = GLib.timeout_add(self.seek_refresh, self.seek, -self.seek_step)
-
-        return self.was_playing_before_seek
-
-    def stop_seek_forwards(self):
-        GLib.source_remove(self._timeout_id_forwards)
-        self._timeout_id_forwards = 0
-
-        if self.was_playing_before_seek:
-            self.play_video()
-
-        self._is_seeking = False
-
-    def stop_seek_backwards(self):
-        GLib.source_remove(self._timeout_id_backwards)
-        self._timeout_id_backwards = 0
+    def stop_seek(self):
+        GLib.source_remove(self._seeking_timeout)
+        self._seeking_timeout = 0
 
         if self.was_playing_before_seek:
             self.play_video()
@@ -168,10 +149,16 @@ class Player:
         if 0 < seek_pos < self.video_length:
             self._is_seeking = True
             self.video_player.set_time(int(seek_pos))
-            self.controller.signal_sender.emit('video_moving', self.get_current_position(), True)
+            self.controller.signal_sender.emit('video_moving', self.get_current_position(), self.is_seeking())
             return True
         else:
             return False
 
     def go_to(self, time_ms):
         self.video_player.set_time(int(time_ms))
+
+    def play_recording(self, recording_path):
+        audio_media = self.vlc_instance.media_new_path(recording_path)
+        self.rec_player.audio_set_mute(False)  # we need to this every time
+        self.rec_player.set_mrl(audio_media.get_mrl())
+        self.rec_player.play()

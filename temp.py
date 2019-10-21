@@ -1186,8 +1186,8 @@ class EpicNarrator(Gtk.ApplicationWindow):
 
         GLib.timeout_add(50, self.video_loaded, last_video_position)  # we need to play the video to get the time
 
-        if self.recordings.annotations_exist():
-            self.recordings.load_annotations()
+        if self.recordings.narrations_exist():
+            self.recordings.load_narrations()
 
             for rec_idx, rec_ms in enumerate(self.recordings.get_recordings_times()):
                 self.add_annotation_box(rec_ms, rec_idx)

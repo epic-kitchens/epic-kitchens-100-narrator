@@ -11,18 +11,18 @@ class Recordings:
     def __init__(self, output_parent, video_path, audio_extension='wav'):
         self.base_folder = Recordings.get_recordings_path(output_parent)
         self.video_path = video_path
-        self.video_annotations_folder = Recordings.get_recordings_path_for_video(self.base_folder, self.video_path,
-                                                                                 from_parent_folder=False)
+        self.video_narrations_folder = Recordings.get_recordings_path_for_video(self.base_folder, self.video_path,
+                                                                                from_parent_folder=False)
         self.audio_extension = audio_extension
         self._recordings = {}
         self._recording_times = []
         self._highlighted_rec_index = None
-        os.makedirs(self.video_annotations_folder, exist_ok=True)
+        os.makedirs(self.video_narrations_folder, exist_ok=True)
 
     def add_recording(self, time, overwrite=False):
         LOG.info("Adding recording at {!r} (overwrite={})".format(time, overwrite))
-        os.makedirs(self.video_annotations_folder, exist_ok=True)
-        path = os.path.join(self.video_annotations_folder, '{}.{}'.format(time, self.audio_extension))
+        os.makedirs(self.video_narrations_folder, exist_ok=True)
+        path = os.path.join(self.video_narrations_folder, '{}.{}'.format(time, self.audio_extension))
 
         if not overwrite:
             self._recordings[time] = path
@@ -49,16 +49,16 @@ class Recordings:
         self.delete_recording(self._recording_times[-1])
 
     def scan_folder(self):
-        LOG.info("Scanning {} for audio files".format(self.video_annotations_folder))
-        audio_files = glob.glob(os.path.join(self.video_annotations_folder,
+        LOG.info("Scanning {} for audio files".format(self.video_narrations_folder))
+        audio_files = glob.glob(os.path.join(self.video_narrations_folder,
                                             '*.{}'.format(self.audio_extension)))
         LOG.info("Found {} existing recordings".format(len(audio_files)))
         return audio_files
 
-    def annotations_exist(self):
-        return os.path.exists(self.video_annotations_folder) and len(self.scan_folder()) > 0
+    def narrations_exist(self):
+        return os.path.exists(self.video_narrations_folder) and len(self.scan_folder()) > 0
 
-    def load_annotations(self):
+    def load_narrations(self):
         for f in self.scan_folder():
             LOG.debug("Loading recording {}".format(f))
             time_ms = int(os.path.splitext(os.path.basename(f))[0])
@@ -119,7 +119,7 @@ class Recordings:
         if 0 <= rec_index < len(self._recording_times):
             self._highlighted_rec_index = rec_index
 
-    def get_next_from_highlighted(self, time, neighbourhood=500):
+    def get_next_from_highlighted(self, time, neighbourhood=1000):
         if self._highlighted_rec_index is None:
             self._set_currently_highlighted_recording_from_time(time)
 

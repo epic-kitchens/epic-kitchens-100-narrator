@@ -51,10 +51,12 @@ class MainWindow(Gtk.ApplicationWindow):
         self.speed_time_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         self.speed_time_box.pack_start(Gtk.Label(label='Playback speed'), False, False, 10)
         self.add_speed_check_boxes()
+
         # time label
         self.time_label = Gtk.Label()
         self.update_time_label(0)
         self.play_recs_with_video_button = Gtk.CheckButton(label='Play recordings with video')
+
         # self.play_recs_with_video_button.connect('toggled', self.play_recs_with_video_toggled) #TODO connect this
         self.speed_time_box.pack_end(self.time_label, False, False, 0)
         self.speed_time_box.pack_end(self.play_recs_with_video_button, False, False, 5)
@@ -68,11 +70,11 @@ class MainWindow(Gtk.ApplicationWindow):
         self.left_box.pack_start(self.menu_bar, False, False, 0)
 
         # playback controller
-        self.playback_controller = PlaybackController(self.controller)
+        self.playback_controller = PlaybackBox(self.controller)
 
         # microphone monitor
         self.monitor_label = Gtk.Label()
-        self.set_monitor_label(False)
+        self.set_monitor_label(None, 'not_recording')
         self.mic_monitor = MicMonitor(self.controller)
 
         # path labels
@@ -82,7 +84,7 @@ class MainWindow(Gtk.ApplicationWindow):
         self.set_path_labels()
 
         # narration box
-        self.narrations_box = NarrationsBox(controller)
+        self.narrations_box = NarrationsBox(controller, self)
         self.narrations_scrolled_window = Gtk.ScrolledWindow()
         self.narrations_scrolled_window.set_border_width(10)
         self.narrations_scrolled_window.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
@@ -110,11 +112,6 @@ class MainWindow(Gtk.ApplicationWindow):
 
         slider_pos_ms = self.slider.get_value()
         self.controller.go_to(slider_pos_ms)
-        self.update_time_label(slider_pos_ms)
-
-        # TODO fix this
-        #closest_rec = self.find_closest_rec(slider_pos_ms, seeking=True)
-        #self.scroll_annotations_box_to_rec(closest_rec)
 
     def slider_clicked(self, *args):
         LOG.info("Slider clicked")
@@ -209,27 +206,23 @@ class MainWindow(Gtk.ApplicationWindow):
         self.controller.signal_sender.connect('video_loaded', self.video_loaded)
         self.controller.signal_sender.connect('ask_output_path', self.choose_output_folder)
         self.controller.signal_sender.connect('video_moving', self.video_moving)
+        self.controller.signal_sender.connect('video_jumped', self.video_jumped)
         self.controller.signal_sender.connect('recording_added', self.add_slider_tick)
+        self.controller.signal_sender.connect('recording_state_changed', self.set_monitor_label)
+        self.controller.signal_sender.connect('recording_deleted', self.refresh_recording_ticks)
+        self.controller.signal_sender.connect('ask_confirmation_for_deleting_rec', self.ask_confirmation_for_deleting)
         self.connect("key-press-event", self.controller.main_window_key_pressed)
         self.connect("key-release-event", self.controller.main_window_key_released)
 
-    def video_moving(self, sender, current_time_ms, is_seeking):
+    def update_time_position(self, current_time_ms):
         self.slider.set_value(current_time_ms)
         self.update_time_label(current_time_ms)
 
-        # TODO implemente the rec things below
-        '''
-        closest_rec = self.find_closest_rec(current_time_ms, seeking=self.is_seeking)
-        self.scroll_annotations_box_to_rec(closest_rec)
+    def video_moving(self, sender, current_time_ms, is_seeking):
+        self.update_time_position(current_time_ms)
 
-        if self.play_recs_with_video and not self.is_seeking and self.highlighed_recording_time is not None:
-            rec = self.highlighed_recording_time
-
-            if rec and rec != self.last_played_rec:
-                self.last_played_rec = rec
-                self.was_playing_before_playing_rec = True
-                self.play_recording(None, None, rec)
-        '''
+    def video_jumped(self, sender, current_time_ms):
+        self.update_time_position(current_time_ms)
 
     def choose_output_folder(self, sender, suggested_folder):
         dialog = Gtk.FileChooserDialog(title="Select output folder", parent=self,
@@ -291,15 +284,14 @@ class MainWindow(Gtk.ApplicationWindow):
         self.slider.set_valign(Gtk.Align.CENTER)
         self.slider.set_draw_value(False)
 
-    def refresh_recording_ticks(self):
-        self.slider.clear_marks()
+    def refresh_recording_ticks(self, sender, time_ms):
+        self.slider.clear_marks()  # unfortunately there is no way to remove only one tick :(
 
-        # TODO fix this
-        #for time_ms in self.recordings.get_recordings_times():
-        #    self.add_time_tick(time_ms, colour=self.red_tick_colour)
+        for time_ms in self.controller.get_recording_times():
+            self.add_slider_tick(None, time_ms, None, False)
 
-    def set_monitor_label(self, is_recording):
-        colour = '#ff3300' if is_recording else 'black'
+    def set_monitor_label(self, sender, recording_state):
+        colour = '#ff3300' if recording_state == 'recording' else 'black'
         self.monitor_label.set_markup('<span foreground="{}">Microphone level</span>'.format(colour))
 
     def set_path_labels(self):
@@ -316,6 +308,22 @@ class MainWindow(Gtk.ApplicationWindow):
         self.paths_box.pack_start(self.video_path_label, False, False, 0)
         self.paths_box.pack_end(self.recordings_path_label, False, False, 0)
         self.paths_box.pack_end(recordings_path_placeholder, False, False, 10)
+
+    def ask_confirmation_for_deleting(self, sender, time_ms, current_recording):
+        if current_recording:
+            msg = 'Are you sure you want to delete the current recording?'
+        else:
+            msg = 'Are you sure you want to delete recording at time {}?'.format(ms_to_timestamp(time_ms))
+
+        dialog = Gtk.MessageDialog(parent=self, flags=0, message_type=Gtk.MessageType.QUESTION, title='Confirm delete')
+        dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
+        dialog.add_button("OK", Gtk.ResponseType.OK)
+        dialog.format_secondary_text(msg)
+        response = dialog.run()
+        dialog.destroy()
+
+        if response == Gtk.ResponseType.OK:
+            self.controller.delete_recording(time_ms)
 
 
 class Menu(Gtk.MenuBar):
@@ -349,9 +357,49 @@ class Menu(Gtk.MenuBar):
         self.settings_menu_item = Gtk.MenuItem(label='Settings')
         self.settings_menu_item.set_submenu(self.settings_menu)
 
+        self.help_text_window = self.create_text_window('asd', 'Help')
+        self.help_text_window.connect('destroy', self.close_text_window)
+
+        self.about_menu = Gtk.Menu()
+        self.help_menu_item = Gtk.MenuItem(label='How to use the narrator')
+        self.help_menu_item.connect('button-press-event', self.show_text_window, self.help_text_window)
+        self.info_menu_item = Gtk.MenuItem(label='Info')
+        self.about_menu.append(self.help_menu_item)
+        self.about_menu.append(self.info_menu_item)
+        self.about_menu_item = Gtk.MenuItem('About')
+        self.about_menu_item.set_submenu(self.about_menu)
+
         self.append(self.file_menu_item)
         self.append(self.mic_menu_item)
         self.append(self.settings_menu_item)
+        self.append(self.about_menu_item)
+
+    def create_text_window(self, text, title):
+        text_view = Gtk.TextView()
+        text_buffer = text_view.get_buffer()
+        text_buffer.set_text("This is some text inside of a Gtk.TextView. "
+                                 + "Select text and click one of the buttons 'bold', 'italic', "
+                                 + "or 'underline' to modify the text accordingly.")
+
+        margin = 20
+        text_view.set_editable(False)
+        text_view.set_cursor_visible(False)
+        text_view.set_wrap_mode(Gtk.WrapMode.WORD)
+        text_view.set_left_margin(margin)
+        text_view.set_right_margin(margin)
+
+        text_window = Gtk.Window(title=title)
+        text_window.add(text_view)
+        text_window.set_size_request(800, 400)
+
+        return text_window
+
+    def close_text_window(self, window):
+        window.hide() #TODO fix this, text is not showing
+        return True #TODO destroy window when closing app
+
+    def show_text_window(self, widget, event, window):
+        window.show_all()
 
     def set_mic_items(self, mic_devices, current_mic):
         mic_item = None
@@ -464,7 +512,7 @@ class VideoArea:
         self.controller.ui_video_area_ready(widget)
 
 
-class PlaybackController(Gtk.ButtonBox):
+class PlaybackBox(Gtk.ButtonBox):
     def __init__(self, controller):
         Gtk.ButtonBox.__init__(self)
         self.controller = controller
@@ -491,17 +539,14 @@ class PlaybackController(Gtk.ButtonBox):
         self.playback_button.connect('clicked', self.controller.toggle_player_playback)
         self.controller.signal_sender.connect('playback_changed', self.playback_state_changed)
         self.controller.signal_sender.connect('audio_state_changed', self.audio_state_changed)
-        self.seek_forward_button.connect('pressed', self.controller.start_seek_forwards)
-        self.seek_forward_button.connect('released', self.controller.stop_seek_forwards)
-        self.seek_backward_button.connect('pressed', self.controller.start_seek_backwards)
-        self.seek_backward_button.connect('released', self.controller.stop_seek_backwards)
+        self.controller.signal_sender.connect('recording_state_changed', self.recording_state_changed)
+        self.seek_forward_button.connect('pressed', self.controller.start_seek, 'forward')
+        self.seek_forward_button.connect('released', self.controller.stop_seek)
+        self.seek_backward_button.connect('pressed', self.controller.start_seek, 'backward')
+        self.seek_backward_button.connect('released', self.controller.stop_seek)
         self.mute_button.connect('released', self.controller.toggle_audio)
-
-        # TODO connect these
-        '''
-        self.record_button.connect('pressed', self.record_button_clicked)
-        self.record_button.connect('released', self.record_button_released)
-        '''
+        self.record_button.connect('pressed', self.controller.record_button_clicked)
+        self.record_button.connect('released', self.controller.record_button_released)
 
         self.pack_start(self.seek_backward_button, False, False, 0)
         self.pack_start(self.seek_forward_button, False, False, 0)
@@ -521,12 +566,24 @@ class PlaybackController(Gtk.ButtonBox):
             self.playback_button.set_image(self.play_image)
         elif state == 'play':
             self.playback_button.set_image(self.pause_image)
+        else:
+            LOG.error('Got unrecognised playback state signal {}'.format(state))
 
     def audio_state_changed(self, sender, state):
         if state == 'muted':
             self.mute_button.set_image(self.unmute_image)
         elif state == 'unmuted':
             self.mute_button.set_image(self.mute_image)
+        else:
+            LOG.error('Got unrecognised audio state signal {}'.format(state))
+
+    def recording_state_changed(self, sender, state):
+        if state == 'recording':
+            self.record_button.set_image(self.record_image)
+        elif state == 'not_recording':
+            self.record_button.set_image(self.mic_image)
+        else:
+            LOG.error('Got unrecognised recording state signal {}'.format(state))
 
 
 class MicMonitor(FigureCanvas):
@@ -537,6 +594,8 @@ class MicMonitor(FigureCanvas):
         FigureCanvas.__init__(self, self.fig)  # a Gtk.DrawingArea
         self.set_size_request(100, 50)
         self.monitor_animation = FuncAnimation(self.fig, self.update_mic_monitor, interval=plot_interval_ms, blit=True)
+        self.is_recording = False
+        self.controller.signal_sender.connect('recording_state_changed', self.change_recording_state)
 
     def prepare_monitor_fig(self):
         plt.style.use('dark_background')
@@ -568,14 +627,17 @@ class MicMonitor(FigureCanvas):
 
         for column, line in enumerate(self.lines):
             line.set_ydata(self.data[:, column])
-            color = 'red' if self.controller.is_recording() else 'white'
+            color = 'red' if self.is_recording else 'white'
             line.set_color(color)
 
         return self.lines
 
+    def change_recording_state(self, sender, state):
+        self.is_recording = state == 'recording'
+
 
 class NarrationsBox(Gtk.ListBox):
-    def __init__(self, controller):
+    def __init__(self, controller, main_window):
         Gtk.ListBox.__init__(self)
         self.set_selection_mode(Gtk.SelectionMode.NONE)
 
@@ -587,13 +649,14 @@ class NarrationsBox(Gtk.ListBox):
         context.add_provider(provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
         self.controller = controller
+        self.main_window = main_window
         self.narrations_map = {}
-        self.highlighted_recording_time = None
         self.highlighted_recording_button = None
 
         self.controller.signal_sender.connect('recording_added', self.add_narration)
         self.controller.signal_sender.connect('reset_highlighted_rec', self.reset_highlighted)
         self.controller.signal_sender.connect('set_highlighted_rec', self.highlight_recording)
+        self.controller.signal_sender.connect('recording_deleted', self.remove_annotation_box)
 
     def add_narration(self, sender, time_ms, rec_idx, new):
         box = Gtk.ButtonBox()
@@ -610,11 +673,10 @@ class NarrationsBox(Gtk.ListBox):
         delete_button = Gtk.Button()
         delete_button.set_image(Gtk.Image.new_from_icon_name('user-trash', Gtk.IconSize.BUTTON))
 
-        # TODO connect these
         time_button.connect('button-press-event', self.recording_timestamp_pressed, time_ms)
-        #play_button.connect('button-press-event', self.play_recording, time_ms)
-        #delete_button.connect('button-press-event', self.delete_recording, time_ms)
-        box.connect('size-allocate', self.new_recording_added, time_ms, new)
+        play_button.connect('button-press-event', self.play_recording_pressed, time_ms)
+        delete_button.connect('button-press-event', self.delete_recording_pressed, time_ms)
+        box.connect('size-allocate', self.new_recording_visible, time_ms, new)
 
         box.pack_start(time_button, False, False, 0)
         box.pack_start(play_button, False, False, 0)
@@ -631,23 +693,30 @@ class NarrationsBox(Gtk.ListBox):
         self.narrations_map[time_ms] = box
         self.insert(box, rec_idx)
 
+        if new:
+            self.highlight_recording(None, time_ms, True, recording_box=box, scroll=False)
+
         return box
 
-    def new_recording_added(self, widget, event, time_ms, new):
+    def new_recording_visible(self, widget, event, time_ms, new):
         if new:
-            self.scroll_to_rec(time_ms)
+            self.scroll_to_rec(time_ms, box=widget)
 
-    def remove_annotation_box(self, widget, time_ms):
-        del self.narrations_map[time_ms]
+    def remove_annotation_box(self, sender, time_ms):
+        box = self.narrations_map.pop(time_ms, None)
+
+        if box is None:
+            return
+
         # we need to get the parent which is the list row box
         # widget is a button box, its parent is a list row box
 
-        for w in widget.get_children():
+        for w in box.get_children():
             w.destroy()
 
-        self.remove(widget.get_parent())
+        self.remove(box.get_parent())
 
-    def remove_all_annotation_boxes(self):
+    def remove_all_narrations_boxes(self):
         for w in self.get_children():
             w.destroy()
             self.remove(w)
@@ -672,13 +741,13 @@ class NarrationsBox(Gtk.ListBox):
             for c in css_classes:
                 context.remove_class(c)
 
-        self.highlighted_recording_time = None
         self.highlighted_recording_button = None
 
-    def highlight_recording(self, sender, time_ms, current_recording):
+    def highlight_recording(self, sender, time_ms, current_recording, recording_box=None, scroll=True):
         self.reset_highlighted()
 
-        recording_box = self.narrations_map[time_ms] if time_ms in self.narrations_map else None
+        if recording_box is None:
+            recording_box = self.narrations_map[time_ms] if time_ms in self.narrations_map else None
 
         if recording_box is None:
             return  # this should never happen
@@ -688,17 +757,29 @@ class NarrationsBox(Gtk.ListBox):
         context = button.get_style_context()
         context.add_class(css_class)
         self.highlighted_recording_button = button
-        self.highlighted_recording_time = time_ms
 
-        self.scroll_to_rec(time_ms, box=recording_box)
+        if scroll:
+            self.scroll_to_rec(time_ms, box=recording_box)
 
     def recording_timestamp_pressed(self, widget, event, time_ms):
-        self.controller.go_to(time_ms)
-        self.highlight_recording(None, time_ms, False)
+        self.controller.go_to(time_ms, jumped=True)
+        self.highlight_recording(None, time_ms, False, recording_box=widget.get_parent(), scroll=False)
 
         if event.button == 3:
             pass
             # self.overwrite_recording(time_ms) #TODO fix this
+
+    def play_recording_pressed(self, widget, event, time_ms):
+        self.controller.play_recording(time_ms)
+
+        # right click moves to the video
+        if event.button == 3:
+            self.controller.go_to(time_ms, jumped=True)
+            self.highlight_recording(None, time_ms, False, recording_box=widget.get_parent(), scroll=False)
+
+    def delete_recording_pressed(self, widget, event, time_ms):
+        # we ask from the main window so the dialog is modal wrt to that window
+        self.main_window.ask_confirmation_for_deleting(None, time_ms, False)
 
 
 def do_nothing_on_key_press(*args):

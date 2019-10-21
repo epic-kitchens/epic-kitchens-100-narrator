@@ -8,7 +8,7 @@ from player import Player
 from recordings import Recordings
 
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk, Gdk, GObject
+from gi.repository import Gtk, Gdk, GLib, GObject
 from recorder import Recorder
 from settings import Settings
 
@@ -32,12 +32,22 @@ class SignalSender(GObject.Object):
     def audio_state_changed(self, state):
         pass
 
-    @GObject.Signal(flags=GObject.SignalFlags.RUN_FIRST, arg_types=(int, bool))
+    # this is emitted when playing or seeking
+    @GObject.Signal(flags=GObject.SignalFlags.RUN_FIRST, arg_types=(int, bool,))
     def video_moving(self, current_position, is_seeking):
+        pass
+
+    # this is emitted when jumping to a narration
+    @GObject.Signal(flags=GObject.SignalFlags.RUN_FIRST, arg_types=(int,))
+    def video_jumped(self, current_position):
         pass
 
     @GObject.Signal(flags=GObject.SignalFlags.RUN_FIRST, arg_types=(int, int, bool,))
     def recording_added(self, rec_time, rec_idx, new):
+        pass
+
+    @GObject.Signal(flags=GObject.SignalFlags.RUN_FIRST, arg_types=(int,))
+    def recording_deleted(self, rec_time):
         pass
 
     @GObject.Signal(flags=GObject.SignalFlags.RUN_FIRST)
@@ -46,6 +56,14 @@ class SignalSender(GObject.Object):
 
     @GObject.Signal(flags=GObject.SignalFlags.RUN_FIRST, arg_types=(int, bool,))
     def set_highlighted_rec(self, rec_time_ms, current_recording):
+        pass
+
+    @GObject.Signal(flags=GObject.SignalFlags.RUN_FIRST, arg_types=(str,))
+    def recording_state_changed(self, state):
+        pass
+
+    @GObject.Signal(flags=GObject.SignalFlags.RUN_FIRST, arg_types=(int, bool,))
+    def ask_confirmation_for_deleting_rec(self, rec_time_ms, current_rec):
         pass
 
 
@@ -61,6 +79,11 @@ class Controller:
         self.player = None
         self.signal_sender = SignalSender()
         self.signal_sender.connect('video_moving', self.find_closest_rec)
+        self.holding_enter = False
+        self.was_playing_before_recording = False
+        self.stop_recording_delay_ms = 500
+        self.is_dragging = False
+        self.highlighted_rec = None
 
     def create_recorder(self):
         saved_microphone = self.settings.get_setting('microphone')
@@ -192,8 +215,8 @@ class Controller:
         self.recordings = Recordings(self.output_path, self.video_path)
         self.player.load_video(video_path)
 
-        if self.recordings.annotations_exist():
-            self.recordings.load_annotations()
+        if self.recordings.narrations_exist():
+            self.recordings.load_narrations()
 
             for rec_idx, rec_ms in enumerate(self.recordings.get_recordings_times()):
                 self.signal_sender.emit('recording_added', rec_ms, rec_idx, False)
@@ -202,7 +225,7 @@ class Controller:
         self.is_video_loaded = True
         self.video_length = self.player.get_video_length()
         self.signal_sender.emit('video_loaded', self.video_length, self.video_path,
-                                self.recordings.video_annotations_folder)
+                                self.recordings.video_narrations_folder)
 
         last_position = self.get_setting('last_video_position', 1)
         self.go_to(last_position)
@@ -220,7 +243,7 @@ class Controller:
         self.settings.update_settings(play_after_delete=widget.get_active())
 
     def play_video(self, *args):
-        if not self.is_video_loaded:
+        if not self.is_video_loaded or self.recorder.is_recording:
             return
 
         LOG.info("Play video")
@@ -229,7 +252,7 @@ class Controller:
         # print('play', threading.current_thread())
 
     def pause_video(self, *args):
-        if not self.is_video_loaded:
+        if not self.is_video_loaded or self.recorder.is_recording:
             return
 
         LOG.info("Pause video")
@@ -238,7 +261,7 @@ class Controller:
         # print('pause', threading.current_thread())
 
     def toggle_player_playback(self, *args):
-        if not self.is_video_loaded:
+        if not self.is_video_loaded or self.recorder.is_recording:
             return
 
         LOG.info("Toggle playback")
@@ -248,7 +271,7 @@ class Controller:
             self.play_video()
 
     def toggle_audio(self, *args):
-        if not self.is_video_loaded:
+        if not self.is_video_loaded or self.recorder.is_recording:
             return
 
         LOG.info("Toggle audio")
@@ -267,48 +290,32 @@ class Controller:
         self.player.unmute_video()
         self.signal_sender.emit('audio_state_changed', 'unmuted')
 
-    def start_seek_backwards(self, *args):
-        if not self.is_video_loaded or self.player.is_seeking():
-            return
-
+    def reset_highlighted_rec(self):
         self.signal_sender.emit('reset_highlighted_rec')
         self.recordings.reset_highlighted()
-        self.player.start_seek_backwards()
+        self.highlighted_rec = None
+
+    def start_seek(self, widget, direction):
+        if not self.is_video_loaded or self.player.is_seeking() or self.recorder.is_recording:
+            return
+
+        self.reset_highlighted_rec()
+        self.player.start_seek(direction)
 
         if self.player.was_playing_before_seek:
             self.signal_sender.emit('playback_changed', 'pause')
 
-    def start_seek_forwards(self, *args):
-        if not self.is_video_loaded or self.player.is_seeking():
-            return
-
-        self.signal_sender.emit('reset_highlighted_rec')
-        self.recordings.reset_highlighted()
-        self.player.start_seek_forwards()
-
-        if self.player.was_playing_before_seek:
-            self.signal_sender.emit('playback_changed', 'pause')
-
-    def stop_seek_forwards(self, *args):
+    def stop_seek(self, *args):
         if not self.is_video_loaded or not self.player.is_seeking():
             return
 
-        self.player.stop_seek_forwards()
+        self.player.stop_seek()
 
         if self.player.was_playing_before_seek:
             self.signal_sender.emit('playback_changed', 'play')
 
-    def stop_seek_backwards(self, *args):
-        if not self.is_video_loaded or not self.player.is_seeking():
-            return
-
-        self.player.stop_seek_backwards()
-
-        if self.player.was_playing_before_seek:
-            self.signal_sender.emit('playback_changed', 'play')
-
-    def go_to(self, time_ms):
-        if not self.is_video_loaded:
+    def go_to(self, time_ms, jumped=False):
+        if not self.is_video_loaded or self.recorder.is_recording:
             return
 
         if time_ms < 0 or time_ms > self.video_length:
@@ -316,71 +323,170 @@ class Controller:
 
         self.recordings.reset_highlighted()
         self.player.go_to(int(time_ms))
-        self.signal_sender.emit('video_moving', self.player.get_current_position(), True)
+
+        if jumped:
+            # this will not highlight
+            self.signal_sender.emit('video_jumped', self.player.get_current_position())
+        else:
+            # the controller is connected to this signal, so it will highlight and scroll to the narration
+            self.signal_sender.emit('video_moving', self.player.get_current_position(), self.player.is_seeking())
 
     def start_dragging(self):
-        self.signal_sender.emit('reset_highlighted_rec')
-        self.recordings.reset_highlighted()
+        if not self.is_video_loaded or self.recorder.is_recording:
+            return
+
+        self.is_dragging = True
+        self.reset_highlighted_rec()
 
         if self.player.is_playing():
             self.pause_video()
             self.player.was_playing_before_seek = True
 
     def stop_dragging(self):
+        self.is_dragging = False
+
         if self.player.was_playing_before_seek:
             self.play_video()
 
-    def find_closest_rec(self, sender, time_ms, seeking):
-        if seeking:
+    def find_closest_rec(self, sender, time_ms, is_seeking):
+        if is_seeking or self.is_dragging:
             rec = self.recordings.get_closest_recording(time_ms)
 
             if rec is not None:
-                self.signal_sender.emit('set_highlighted_rec', rec, False)
+                self.highlighted_rec = rec
+                self.signal_sender.emit('set_highlighted_rec', self.highlighted_rec, False)
             else:
-                self.signal_sender.emit('reset_highlighted_rec')
-                self.recordings.reset_highlighted()
+                self.reset_highlighted_rec()
         else:
             rec = self.recordings.get_next_from_highlighted(time_ms)
 
             if rec is not None:
+                self.highlighted_rec = rec
                 self.recordings.move_highlighted_next()
-                self.signal_sender.emit('set_highlighted_rec', rec, False)
+                self.signal_sender.emit('set_highlighted_rec', self.highlighted_rec, False)
+
+    def record_button_clicked(self, *args):
+        LOG.info("Record button pressed")
+        if self.get_setting('hold_to_record', False):
+            if not self.holding_enter and not self.recorder.is_recording:
+                self.holding_enter = True
+                self.start_recording()
+        else:
+            self.toggle_record()
+
+    def record_button_released(self, *args):
+        LOG.info("Record button released")
+        if self.get_setting('hold_to_record', False):
+            if self.recorder.is_recording:
+                self.invoke_stop_recording()
+
+    def toggle_record(self):
+        LOG.info("Toggle recording")
+
+        if not self.recorder.is_recording:
+            self.start_recording()
+        else:
+            self.invoke_stop_recording()
+
+    def start_recording(self, overwrite=False, rec_time=None):
+        # first start the recording and then update the ui to prevent clipping
+        if self.player.is_playing():
+            self.pause_video()
+            self.was_playing_before_recording = True
+        else:
+            self.was_playing_before_recording = False
+
+        if overwrite:
+            if rec_time is None or not self.recordings.recording_exists(rec_time):
+                return
+
+            path, _ = self.recordings.add_recording(rec_time, overwrite=overwrite)
+            rec_idx = None
+        else:
+            rec_time = self.player.get_current_position()
+
+            if rec_time < 0:  # happens when we reach the end
+                return
+
+            while self.recordings.recording_exists(rec_time):
+                rec_time += 1  # shifting one millisecond
+
+            path, rec_idx = self.recordings.add_recording(rec_time, overwrite=overwrite)
+
+        self.recorder.start_recording(path)
+        self.highlighted_rec = rec_time
+
+        if not overwrite:
+            self.signal_sender.emit('recording_added', rec_time, rec_idx, True)
+
+        self.signal_sender.emit('recording_state_changed', 'recording')
+
+    def invoke_stop_recording(self):
+        LOG.info("Stop recording in 0.5 seconds")
+        GLib.timeout_add(self.stop_recording_delay_ms, self.stop_recording)  # TODO resume playing
+
+    def stop_recording(self):
+        self.recorder.stop_recording()
+
+        LOG.info("Recording stopped")
+        self.signal_sender.emit('recording_state_changed', 'not_recording')
+        self.reset_highlighted_rec()
+        self.holding_enter = False
+
+        if self.was_playing_before_recording:
+            self.play_video()
+
+        return False  # reset the GLib timer
+
+    def play_recording(self, time_ms):
+        LOG.info("Playing recording at {}ms".format(time_ms))
+        recording_path = self.recordings.get_path_for_recording(time_ms)
+
+        if recording_path is not None:
+            self.player.play_recording(recording_path)
+
+    def delete_recording(self, time_ms):
+        if self.player.is_playing():
+            self.pause_video()
+
+        if time_ms == self.highlighted_rec:
+            self.reset_highlighted_rec()
+
+        if self.recorder.is_recording:
+            self.stop_recording()
+
+        self.recordings.delete_recording(time_ms)
+        self.signal_sender.emit('recording_deleted', time_ms)
+
+        if self.get_setting('play_after_delete', False):
+            self.play_video()
+
+    def get_recording_times(self):
+        return self.recordings.get_recordings_times()
 
     def main_window_key_pressed(self, widget, event):
         if not self.is_video_loaded:
             return True
 
         if event.keyval == Gdk.KEY_Left:
-            self.start_seek_backwards()
+            self.start_seek(None, 'backward')
         elif event.keyval == Gdk.KEY_Right:
-            self.start_seek_forwards()
+            self.start_seek(None, 'forward')
         elif event.keyval == Gdk.KEY_space:
             self.toggle_player_playback()
         elif event.keyval == Gdk.KEY_Return:
-            pass  # TODO fix this
-            '''
-            if self.holding_rec:
+            if self.holding_enter:
                 return True
 
             # We can't rely only on the recorder variable to avoid ghosting recordings, because this code can be called
             # multiple times before the recording starts. We use a simple variable here
             # this will be set to False when actually finishing the recording
-            self.holding_rec = True
+            self.holding_enter = True
             LOG.info("Pressing enter")
 
-            if self.hold_to_record:
+            if self.get_setting('hold_to_record', False):
                 if not self.recorder.is_recording:
                     self.start_recording()
-            '''
-        elif event.keyval == Gdk.KEY_Delete or event.keyval == Gdk.KEY_BackSpace:
-            pass # TODO fix this
-            '''
-            if self.recordings.empty():
-                pass
-
-            if self.highlighed_recording_time is not None:
-                self.delete_recording(self.highlighted_recording_button, None, self.highlighed_recording_time)
-            '''
         else:
             pass
 
@@ -391,20 +497,16 @@ class Controller:
         if not self.is_video_loaded:
             return True
 
-        if event.keyval == Gdk.KEY_Left:
-            self.stop_seek_backwards()
-        elif event.keyval == Gdk.KEY_Right:
-            self.stop_seek_forwards()
+        if event.keyval == Gdk.KEY_Left or event.keyval == Gdk.KEY_Right:
+            self.stop_seek()
         elif event.keyval == Gdk.KEY_Return:
             LOG.info("Enter released")
-            pass  # TODO fix this
-            '''
-            if self.hold_to_record:
+
+            if self.get_setting('hold_to_record', False):
                 if self.recorder.is_recording:
-                    self.stop_recording()
+                    self.invoke_stop_recording()
             else:
                 self.toggle_record()
-            '''
         elif event.keyval == Gdk.KEY_o or event.keyval == Gdk.KEY_O:
             pass # fix this
             '''
@@ -413,12 +515,15 @@ class Controller:
             '''
         elif event.keyval == Gdk.KEY_M or event.keyval == Gdk.KEY_m:
             self.toggle_audio()
+        elif event.keyval == Gdk.KEY_Delete or event.keyval == Gdk.KEY_BackSpace:
+            if self.recordings.empty() or self.highlighted_rec is None:
+                return True
+
+            self.pause_video()
+            current_recording = self.is_recording()
+            self.signal_sender.emit('ask_confirmation_for_deleting_rec', self.highlighted_rec, current_recording)
         else:
             pass
 
         # return true does not propagate the event to other widgets
         return True
-
-
-
-
