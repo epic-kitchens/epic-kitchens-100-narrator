@@ -48,7 +48,7 @@ class Recorder:
         LOG.info("Stopping recording, saved to {}".format(self.current_file.name))
         self.is_recording = False
         LOG.debug("Closing {}".format(self.current_file.name))
-        self.current_file.close()
+        self.current_file.hide()
 
         # while self.current_file is not None and not self.current_file.closed:
         #    time.sleep(0.01)  # waiting for file to be closed

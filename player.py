@@ -1,27 +1,25 @@
 import ctypes
-import sys
-import threading
-
 import vlc
 import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import GLib
+
 
 class Player:
     def __init__(self, widget, controller):
         self.controller = controller
         self.vlc_instance = vlc.Instance('--no-xlib')
         self.video_player = self.vlc_instance.media_player_new()
+        self.rec_player = self.vlc_instance.media_player_new()
         self.video_length = 0
-        self.set_vlc_window(widget)
+        self.set_vlc_window(widget, controller.this_os)
         self.mute_video()
-        main_events = self.video_player.event_manager()
         self._seeking_timeout = 0
         self.was_playing_before_seek = None
         self._is_seeking = False
         self.is_dragging = False
-        self.seek_step = 500  # milliseconds
         self.seek_refresh = 50  # milliseconds
+        self.seek_step = 500  # milliseconds
 
         # from lib vlc documentation. Make sure you don't use wait anywhere in the program
         '''
@@ -32,22 +30,22 @@ class Player:
         '''
 
         # VERY IMPORTANT: functions attached to vlc events will be run in a separate thread,
-        # so implement all thread safety things you need, i.e. use glib.idle_add() to do stuff
+        # VLC is not thread safe, so if you call any method that will access the vlc player from this dummy threads
+        # you will get seg faults randomly
+        # Use glib.idle_add() to invoke things from the main thread
+        main_events = self.video_player.event_manager()
         main_events.event_attach(vlc.EventType.MediaPlayerPositionChanged, self.video_moving_handler)
-        # main_events.event_attach(vlc.EventType.MediaPlayerEndReached, self.video_ended_handler)
+        main_events.event_attach(vlc.EventType.MediaPlayerEndReached, self.video_ended_handler)
         main_events.event_attach(vlc.EventType.MediaPlayerLengthChanged, self.video_loaded_handler)
 
-        self.rec_player = self.vlc_instance.media_player_new()
         rec_events = self.rec_player.event_manager()
-        # rec_events.event_attach(vlc.EventType.MediaPlayerStopped, self.finished_playing_recording_handler)
+        rec_events.event_attach(vlc.EventType.MediaPlayerStopped, self.finished_playing_recording_handler)
 
-        # TODO connect vlc events
-
-    def set_vlc_window(self, widget):
-        if sys.platform.startswith('linux'):
+    def set_vlc_window(self, widget, this_os):
+        if this_os == 'linux':
             win_id = widget.get_window().get_xid()
             self.video_player.set_xwindow(win_id)
-        elif sys.platform.startswith('darwin'):
+        elif this_os == 'mac_os':
             # ugly bit to get window if on mac os
             window = widget.get_property('window')
             ctypes.pythonapi.PyCapsule_GetPointer.restype = ctypes.c_void_p
@@ -58,7 +56,7 @@ class Player:
             libgdk.gdk_quartz_window_get_nsview.argtypes = [ctypes.c_void_p]
             handle = libgdk.gdk_quartz_window_get_nsview(gpointer)
             self.video_player.set_nsobject(int(handle))
-        elif sys.platform.startswith('win'):
+        elif this_os == 'windows':
             window = widget.get_property('window')
             ctypes.pythonapi.PyCapsule_GetPointer.restype = ctypes.c_void_p
             ctypes.pythonapi.PyCapsule_GetPointer.argtypes = [ctypes.py_object]
@@ -67,7 +65,7 @@ class Player:
             handle = gdkdll.gdk_win32_window_get_handle(drawingarea_gpointer)
             self.video_player.set_hwnd(int(handle))
         else:
-            raise Exception('Cannot deal with this platform: {}'.format(sys.platform))
+            raise Exception('Cannot deal with this platform: {}'.format(this_os))
 
     def shutting_down(self):
         self.video_player.stop()
@@ -77,7 +75,7 @@ class Player:
     def load_video(self, video_path):
         media = self.vlc_instance.media_new_path(video_path)
         self.video_player.set_mrl(media.get_mrl())
-        self.play_video()  # we need to play the video for a while to get the length in milliseconds,
+        self.play_video()  # we need to play the video for a while to get the length in milliseconds
 
     def video_loaded_handler(self, *args):
         GLib.idle_add(self.video_loaded)
@@ -150,15 +148,35 @@ class Player:
             self._is_seeking = True
             self.video_player.set_time(int(seek_pos))
             self.controller.signal_sender.emit('video_moving', self.get_current_position(), self.is_seeking())
-            return True
-        else:
-            return False
+
+        # always return True to make sure the event id is kept in glib
+        return True
 
     def go_to(self, time_ms):
         self.video_player.set_time(int(time_ms))
+
+    def video_ended_handler(self, *args):
+        GLib.idle_add(self.video_ended)
+
+    def video_ended(self):
+        self.video_player.stop()
+        self.controller.reload_current_video()
 
     def play_recording(self, recording_path):
         audio_media = self.vlc_instance.media_new_path(recording_path)
         self.rec_player.audio_set_mute(False)  # we need to this every time
         self.rec_player.set_mrl(audio_media.get_mrl())
         self.rec_player.play()
+
+    def finished_playing_recording_handler(self, *args):
+        GLib.idle_add(self.finished_playing_recording)
+
+    def finished_playing_recording(self):
+        self.controller.recording_finished_playing()
+
+    def reset(self):
+        self.video_length = 0
+        self._seeking_timeout = 0
+        self.was_playing_before_seek = None
+        self._is_seeking = False
+

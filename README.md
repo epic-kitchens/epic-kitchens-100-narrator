@@ -117,7 +117,7 @@ the button again to stop the recording and continue annotating. The end of the r
 to avoid clipping. 
 
 Alternatively, if you switch the option `Settings -> Hold to record` you can record while holding down either the record
-button or the enter key. In this case the recording will stop immediately as soon as you release the key or the button.
+button or the enter key.
 
 ### Jumping to, playing, deleting and overwriting recordings
 
@@ -195,7 +195,7 @@ your input audio interface.
 
 The narrator will save some settings under a directory named `epic_narrator` automatically created in your home directory.
 
-The settings will save the path of the video you narrated last, as well as the output path and, the microphone id and a
+The settings will save the path of the video you narrated last, as well as the output path, the microphone id and a
 few other things. 
 
 ## Logging

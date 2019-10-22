@@ -1,9 +1,7 @@
 import logging
 import os
 import traceback
-
 import gi
-
 from player import Player
 from recordings import Recordings
 
@@ -20,8 +18,12 @@ class SignalSender(GObject.Object):
     def video_loaded(self, video_length, video_path, output_path):
         return True
 
-    @GObject.Signal(flags=GObject.SignalFlags.RUN_FIRST, arg_types=(str,))
-    def ask_output_path(self, suggested_folder):
+    @GObject.Signal(flags=GObject.SignalFlags.RUN_FIRST, arg_types=(str, bool,))
+    def ask_video_path(self, video_folder, resetting):
+        return True
+
+    @GObject.Signal(flags=GObject.SignalFlags.RUN_FIRST, arg_types=(str, bool,))
+    def ask_output_path(self, suggested_folder, changing_output):
         return True
 
     @GObject.Signal(flags=GObject.SignalFlags.RUN_FIRST, arg_types=(str,))
@@ -66,24 +68,42 @@ class SignalSender(GObject.Object):
     def ask_confirmation_for_deleting_rec(self, rec_time_ms, current_rec):
         pass
 
+    @GObject.Signal(flags=GObject.SignalFlags.RUN_FIRST, arg_types=(int,))
+    def ask_confirmation_for_overwriting_rec(self, rec_time_ms):
+        pass
+
+    @GObject.Signal(flags=GObject.SignalFlags.RUN_FIRST)
+    def resetting_recordings(self):
+        pass
+
+    @GObject.Signal(flags=GObject.SignalFlags.RUN_FIRST, arg_types=(str,))
+    def output_path_changed(self, output_path):
+        pass
+
 
 class Controller:
-    def __init__(self):
+    def __init__(self, this_os):
         self.settings = Settings()
         self.recorder = self.create_recorder()
         self.recordings = None
         self.video_length = 0
         self.is_video_loaded = False
-        self.video_path = None  # TODO load things from settings
+        self.video_path = None
         self.output_path = None
         self.player = None
-        self.signal_sender = SignalSender()
-        self.signal_sender.connect('video_moving', self.find_closest_rec)
         self.holding_enter = False
         self.was_playing_before_recording = False
+        self.was_playing_before_dragging = False
         self.stop_recording_delay_ms = 500
         self.is_dragging = False
         self.highlighted_rec = None
+        self.loaded_last_video = False
+        self.rec_played_with_video = False
+        self.last_played_rec = None
+        self.this_os = this_os
+
+        self.signal_sender = SignalSender()
+        self.signal_sender.connect('video_moving', self.catch_video_moving)
 
     def create_recorder(self):
         saved_microphone = self.settings.get_setting('microphone')
@@ -165,55 +185,89 @@ class Controller:
         return not(output_path is None or
                    not os.path.exists(Recordings.get_recordings_path_for_video(output_path, video_path)))
 
+    def load_video_menu_pressed(self, *args):
+        if self.is_recording():
+            return
+
+        if self.is_video_loaded:
+            self.pause_video()
+
+        saved_video_folder = self.get_setting('video_folder', None)
+
+        if saved_video_folder is not None and not os.path.exists(saved_video_folder):
+            saved_video_folder = None
+
+        resetting = self.is_video_loaded
+
+        self.signal_sender.emit('ask_video_path', saved_video_folder, resetting)
+
+    def change_output_menu_pressed(self, *args):
+        if self.is_recording() or not self.is_video_loaded:
+            return
+
+        self.pause_video()
+
+        video_folder = os.path.dirname(self.video_path)
+        saved_output = self.get_setting('output_path', None)
+        suggested_folder = saved_output if saved_output is not None and os.path.exists(saved_output) else video_folder
+
+        self.signal_sender.emit('ask_output_path', suggested_folder, True)
+
     def video_selected(self, video_path):
         self.video_path = video_path
-        self.settings.update_settings(last_video=video_path)
         video_folder = os.path.dirname(video_path)
-        self.settings.update_settings(video_folder=video_folder)
+        self.settings.update_settings(last_video=video_path, video_folder=video_folder)
 
         saved_output = self.get_setting('output_path', None)
 
-        if not self.is_output_path_valid(saved_output, self.video_path):
+        if self.output_path is None and not self.is_output_path_valid(saved_output, self.video_path):
             suggested_folder = saved_output if saved_output is not None and \
                                                os.path.exists(saved_output) \
                                                else video_folder
-            self.signal_sender.emit('ask_output_path', suggested_folder)
+            self.signal_sender.emit('ask_output_path', suggested_folder, False)
         else:
-            self.output_folder_path_selected(saved_output)
+            self.output_path_selected(saved_output, False)
 
-    def output_folder_path_selected(self, output_path):
+    def output_path_selected(self, output_path, changing_output):
         self.output_path = output_path
-        self.settings.update_settings(output_path=output_path)
-        self.setup_narrator(self.video_path, output_path)
+        self.settings.update_settings(output_path=self.output_path)
+
+        if changing_output:
+            self.signal_sender.emit('output_path_changed', self.output_path)
+            self.setup_recordings()
+        else:
+            self.setup_narrator()
 
     def ui_video_area_ready(self, widget):
         self.player = Player(widget, self)
+        self.ready_to_load_video()
 
+    def ready_to_load_video(self):
         last_video_path = self.get_setting('last_video', None)
 
         if last_video_path is not None and os.path.exists(last_video_path):
             self.video_selected(last_video_path)
+            self.loaded_last_video = True
 
-    def setup_narrator(self, video_path, output_path):
-        # TODO check this and implement reloading of video
-        self.video_path = video_path
-        self.output_path = output_path
-        self.is_video_loaded = False
-        video_folder = os.path.dirname(video_path)
-        self.settings.update_settings(last_video=video_path)
-        self.settings.update_settings(video_folder=video_folder, output_path=self.output_path)
+    def setup_narrator(self):
+        if self.is_video_loaded:
+            self.reset()
+
+        self.setup_recordings()  # this will reset recordings if loaded already
 
         playback_speed = self.get_setting('playback_speed', 1)
 
         if type(playback_speed) == float and 0 <= playback_speed <= 1:
             self.player.set_speed(playback_speed)
 
+        self.player.load_video(self.video_path)
+
+    def setup_recordings(self):
         if self.recordings is not None:
-            # TODO reset things
-            pass
+            del self.recordings
+            self.signal_sender.emit('resetting_recordings')
 
         self.recordings = Recordings(self.output_path, self.video_path)
-        self.player.load_video(video_path)
 
         if self.recordings.narrations_exist():
             self.recordings.load_narrations()
@@ -221,14 +275,33 @@ class Controller:
             for rec_idx, rec_ms in enumerate(self.recordings.get_recordings_times()):
                 self.signal_sender.emit('recording_added', rec_ms, rec_idx, False)
 
+    def reset(self):
+        self.is_video_loaded = False
+        self.loaded_last_video = False
+        self.holding_enter = False
+        self.was_playing_before_recording = False
+        self.was_playing_before_dragging = False
+        self.is_dragging = False
+        self.highlighted_rec = None
+        self.loaded_last_video = False
+        self.rec_played_with_video = False
+        self.last_played_rec = None
+        self.player.reset()
+
     def video_loaded(self):
         self.is_video_loaded = True
         self.video_length = self.player.get_video_length()
-        self.signal_sender.emit('video_loaded', self.video_length, self.video_path,
-                                self.recordings.video_narrations_folder)
+        self.signal_sender.emit('video_loaded', self.video_length, self.video_path, self.output_path)
 
-        last_position = self.get_setting('last_video_position', 1)
-        self.go_to(last_position)
+        if self.loaded_last_video:
+            last_position = self.get_setting('last_video_position', 1)
+            self.go_to(last_position, jumped=True)
+
+    def reload_current_video(self):
+        self.pause_video()
+        # set the last position to the end, so when we reload the video (we have to do that) is at the end
+        self.settings.update_settings(last_video_position=self.video_length)
+        self.player.load_video(self.video_path)
 
     def playback_speed_selected(self, sender, speed):
         self.settings.update_settings(playback_speed=speed)
@@ -241,6 +314,9 @@ class Controller:
 
     def play_after_delete_toggled(self, widget):
         self.settings.update_settings(play_after_delete=widget.get_active())
+
+    def play_recordings_with_video_toggled(self, widget):
+        self.settings.update_settings(play_recs_with_video=widget.get_active())
 
     def play_video(self, *args):
         if not self.is_video_loaded or self.recorder.is_recording:
@@ -290,10 +366,12 @@ class Controller:
         self.player.unmute_video()
         self.signal_sender.emit('audio_state_changed', 'unmuted')
 
-    def reset_highlighted_rec(self):
+    def reset_highlighted_rec(self, reset_index=True):
         self.signal_sender.emit('reset_highlighted_rec')
-        self.recordings.reset_highlighted()
         self.highlighted_rec = None
+
+        if reset_index:
+            self.recordings.reset_highlighted()
 
     def start_seek(self, widget, direction):
         if not self.is_video_loaded or self.player.is_seeking() or self.recorder.is_recording:
@@ -325,7 +403,7 @@ class Controller:
         self.player.go_to(int(time_ms))
 
         if jumped:
-            # this will not highlight
+            # this will not highlight since it is called when clicking a narration timestamps
             self.signal_sender.emit('video_jumped', self.player.get_current_position())
         else:
             # the controller is connected to this signal, so it will highlight and scroll to the narration
@@ -340,15 +418,34 @@ class Controller:
 
         if self.player.is_playing():
             self.pause_video()
-            self.player.was_playing_before_seek = True
+            self.was_playing_before_dragging = True
+        else:
+            self.was_playing_before_dragging = False
 
-    def stop_dragging(self):
+    def stop_dragging(self, time_ms):
+        self.go_to(time_ms, jumped=True)
         self.is_dragging = False
 
-        if self.player.was_playing_before_seek:
+        if self.was_playing_before_dragging:
             self.play_video()
 
-    def find_closest_rec(self, sender, time_ms, is_seeking):
+    def catch_video_moving(self, sender, time_ms, is_seeking):
+        if not self.is_video_loaded:
+            return
+
+        self.highlight_recording(sender, time_ms, is_seeking)
+
+        if self.get_setting('play_recs_with_video', False) \
+                and self.highlighted_rec is not None \
+                and not is_seeking \
+                and not self.is_dragging \
+                and self.last_played_rec != self.highlighted_rec:
+            self.rec_played_with_video = True
+            self.last_played_rec = self.highlighted_rec
+            self.pause_video()
+            self.play_recording(self.highlighted_rec)
+
+    def highlight_recording(self, sender, time_ms, is_seeking):
         if is_seeking or self.is_dragging:
             rec = self.recordings.get_closest_recording(time_ms)
 
@@ -416,14 +513,16 @@ class Controller:
         self.recorder.start_recording(path)
         self.highlighted_rec = rec_time
 
-        if not overwrite:
+        if overwrite:
+            self.signal_sender.emit('set_highlighted_rec', rec_time, True)
+        else:
             self.signal_sender.emit('recording_added', rec_time, rec_idx, True)
 
         self.signal_sender.emit('recording_state_changed', 'recording')
 
     def invoke_stop_recording(self):
         LOG.info("Stop recording in 0.5 seconds")
-        GLib.timeout_add(self.stop_recording_delay_ms, self.stop_recording)  # TODO resume playing
+        GLib.timeout_add(self.stop_recording_delay_ms, self.stop_recording)
 
     def stop_recording(self):
         self.recorder.stop_recording()
@@ -438,7 +537,19 @@ class Controller:
 
         return False  # reset the GLib timer
 
+    def overwrite_recording(self, time_ms):
+        if self.recorder.is_recording:
+            return
+
+        if self.player.is_playing():
+            self.pause_video()
+
+        self.start_recording(overwrite=True, rec_time=time_ms)
+
     def play_recording(self, time_ms):
+        if self.is_recording():
+            return
+
         LOG.info("Playing recording at {}ms".format(time_ms))
         recording_path = self.recordings.get_path_for_recording(time_ms)
 
@@ -460,6 +571,14 @@ class Controller:
 
         if self.get_setting('play_after_delete', False):
             self.play_video()
+
+    def recording_finished_playing(self):
+        if not self.is_video_loaded:
+            return
+
+        if self.rec_played_with_video:
+            self.play_video()
+            self.rec_played_with_video = False
 
     def get_recording_times(self):
         return self.recordings.get_recordings_times()
@@ -508,11 +627,11 @@ class Controller:
             else:
                 self.toggle_record()
         elif event.keyval == Gdk.KEY_o or event.keyval == Gdk.KEY_O:
-            pass # fix this
-            '''
-            if self.highlighed_recording_time is not None:
-                self.overwrite_recording(self.highlighed_recording_time)
-            '''
+            if self.is_recording() or self.highlighted_rec is None:
+                return True
+
+            self.pause_video()
+            self.signal_sender.emit('ask_confirmation_for_overwriting_rec', self.highlighted_rec)
         elif event.keyval == Gdk.KEY_M or event.keyval == Gdk.KEY_m:
             self.toggle_audio()
         elif event.keyval == Gdk.KEY_Delete or event.keyval == Gdk.KEY_BackSpace:

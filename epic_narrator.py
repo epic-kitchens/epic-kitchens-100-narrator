@@ -2,12 +2,13 @@ import argparse
 import faulthandler
 import logging
 import os
+import sys
 from logging.handlers import RotatingFileHandler
 
 from controller import Controller
 from recorder import Recorder
 from settings import Settings
-from ui import MainWindow
+from ui import MainWindow, HelpWindow
 
 import gi
 gi.require_version('Gtk', '3.0')
@@ -41,6 +42,17 @@ parser.add_argument('--verbosity',
 parser.add_argument('--log-file', type=str, help='Path to log file.')
 
 
+def get_os():
+    if sys.platform.startswith('linux'):
+        return 'linux'
+    elif sys.platform.startswith('darwin'):
+        return 'mac_os'
+    elif sys.platform.startswith('win'):
+        return 'windows'
+    else:
+        return sys.platform
+
+
 def main(args):
     setup_logging(args)
     commit_hash = get_git_commit_hash()
@@ -55,9 +67,13 @@ def main(args):
         LOG.info('Changing default mic device to {}'.format(args.set_audio_device))
         Recorder.set_default_device(args.set_audio_device)
 
-    controller = Controller()
-    main_window = MainWindow(controller) #TODO set single window if it is mac os
+    this_os = get_os()
+    single_window = this_os in ['linux', 'windows']
+
+    controller = Controller(this_os)
+    main_window = MainWindow(controller, this_os, single_window=single_window)
     main_window.show()
+
     Gtk.main()
 
 

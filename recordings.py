@@ -113,23 +113,25 @@ class Recordings:
         closest = self.get_closest_recording(time, neighbourhood=None)
 
         if closest is not None:
-            self._highlighted_rec_index = self._recording_times.index(closest)
+            shift = 1 if closest - time > 0 else 0
+            self._highlighted_rec_index = self._recording_times.index(closest) - shift
 
     def _set_currently_highlighted_recording_from_index(self, rec_index):
         if 0 <= rec_index < len(self._recording_times):
             self._highlighted_rec_index = rec_index
 
-    def get_next_from_highlighted(self, time, neighbourhood=1000):
+    def get_next_from_highlighted(self, time, neighbourhood=500):
         if self._highlighted_rec_index is None:
             self._set_currently_highlighted_recording_from_time(time)
 
         if self._highlighted_rec_index is not None and self._highlighted_rec_index + 1 < len(self._recording_times):
             next_rec = self._recording_times[self._highlighted_rec_index+1]
+
             dist = next_rec - time
 
             if dist < 0:
                 # we are dragging behind, so let's find the closest one from the current highlighted
-                for t in self._recording_times[self._highlighted_rec_index+1:]:
+                for t in self._recording_times[self._highlighted_rec_index:]:
                     if t - time >= 0:
                         return t
             elif dist < neighbourhood:

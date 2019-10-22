@@ -597,8 +597,7 @@ class EpicNarrator(Gtk.ApplicationWindow):
         if self.player.is_playing():
             self.pause_video()
 
-        if self.recorder.is_recording:
-            self.stop_recording()
+
             current_recording = True
         else:
             current_recording = False

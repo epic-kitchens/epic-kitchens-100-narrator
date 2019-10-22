@@ -1,33 +1,32 @@
 import logging
 import os
 import queue
-import sys
 import matplotlib as mpl
-import numpy as np
-
 mpl.use('PS')
 import matplotlib.pyplot as plt
 import gi
-from recordings import ms_to_timestamp
+import numpy as np
 
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, GLib, Gdk, Pango, GObject
 from matplotlib.animation import FuncAnimation
 from matplotlib.backends.backend_gtk3agg import (FigureCanvasGTK3Agg as FigureCanvas)
+from recordings import ms_to_timestamp
 
-if sys.platform.startswith('darwin'):
-    plt.switch_backend('MacOSX')
-else:
-    plt.switch_backend('GTK3Agg')
 
 LOG = logging.getLogger('epic_narrator')
 
 
 class MainWindow(Gtk.ApplicationWindow):
-    def __init__(self, controller, single_window=True):
+    def __init__(self, controller, this_os, single_window=True):
         Gtk.ApplicationWindow.__init__(self, title='Epic Narrator')
         gtk_settings = Gtk.Settings.get_default()
         gtk_settings.set_property("gtk-application-prefer-dark-theme", False)
+
+        if this_os == 'mac_os':
+            plt.switch_backend('MacOSX')
+        else:
+            plt.switch_backend('GTK3Agg')
 
         try:
             # set an icon if running from the command line
@@ -56,8 +55,8 @@ class MainWindow(Gtk.ApplicationWindow):
         self.time_label = Gtk.Label()
         self.update_time_label(0)
         self.play_recs_with_video_button = Gtk.CheckButton(label='Play recordings with video')
-
-        # self.play_recs_with_video_button.connect('toggled', self.play_recs_with_video_toggled) #TODO connect this
+        self.play_recs_with_video_button.set_active(self.controller.get_setting('play_recs_with_video', False))
+        self.play_recs_with_video_button.connect('toggled', self.controller.play_recordings_with_video_toggled)
         self.speed_time_box.pack_end(self.time_label, False, False, 0)
         self.speed_time_box.pack_end(self.play_recs_with_video_button, False, False, 5)
 
@@ -119,7 +118,8 @@ class MainWindow(Gtk.ApplicationWindow):
 
     def slider_released(self, *args):
         LOG.info("Slider released")
-        self.controller.stop_dragging()
+        slider_pos_ms = int(self.slider.get_value())
+        self.controller.stop_dragging(slider_pos_ms)
 
     def get_monitor_size(self):
         screen = self.get_screen()
@@ -200,19 +200,24 @@ class MainWindow(Gtk.ApplicationWindow):
     def connect_signals(self):
         self.connect('destroy', self.closing)
         self.connect('show', self.showing)
+        self.connect("key-press-event", self.controller.main_window_key_pressed)
+        self.connect("key-release-event", self.controller.main_window_key_released)
         self.slider.connect('change-value', self.slider_moved)
         self.slider.connect('button-press-event', self.slider_clicked)
         self.slider.connect('button-release-event', self.slider_released)
         self.controller.signal_sender.connect('video_loaded', self.video_loaded)
+        self.controller.signal_sender.connect('ask_video_path', self.choose_video)
         self.controller.signal_sender.connect('ask_output_path', self.choose_output_folder)
         self.controller.signal_sender.connect('video_moving', self.video_moving)
         self.controller.signal_sender.connect('video_jumped', self.video_jumped)
         self.controller.signal_sender.connect('recording_added', self.add_slider_tick)
         self.controller.signal_sender.connect('recording_state_changed', self.set_monitor_label)
         self.controller.signal_sender.connect('recording_deleted', self.refresh_recording_ticks)
+        self.controller.signal_sender.connect('resetting_recordings', self.remove_recording_ticks)
+        self.controller.signal_sender.connect('output_path_changed', self.update_output_path_label)
         self.controller.signal_sender.connect('ask_confirmation_for_deleting_rec', self.ask_confirmation_for_deleting)
-        self.connect("key-press-event", self.controller.main_window_key_pressed)
-        self.connect("key-release-event", self.controller.main_window_key_released)
+        self.controller.signal_sender.connect('ask_confirmation_for_overwriting_rec',
+                                              self.ask_confirmation_for_overwriting)
 
     def update_time_position(self, current_time_ms):
         self.slider.set_value(current_time_ms)
@@ -224,7 +229,75 @@ class MainWindow(Gtk.ApplicationWindow):
     def video_jumped(self, sender, current_time_ms):
         self.update_time_position(current_time_ms)
 
-    def choose_output_folder(self, sender, suggested_folder):
+    def choose_video(self, sender, saved_video_folder, reset):
+        if reset:
+            confirm_dialog = Gtk.MessageDialog(parent=self, flags=0, message_type=Gtk.MessageType.QUESTION,
+                                               title='Confirm loading another video')
+            confirm_dialog.format_secondary_text('Are you sure you want to load another video?')
+            confirm_dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
+            confirm_dialog.add_button("OK", Gtk.ResponseType.OK)
+            response = confirm_dialog.run()
+
+            if response != Gtk.ResponseType.OK:
+                confirm_dialog.destroy()
+                return
+
+            confirm_dialog.destroy()
+
+        file_dialog = Gtk.FileChooserDialog(title="Open video", parent=self, action=Gtk.FileChooserAction.OPEN)
+        file_dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
+        file_dialog.add_button("OK", Gtk.ResponseType.OK)
+
+        video_file_filter = Gtk.FileFilter()
+        video_file_filter.set_name("Video files")
+        video_file_filter.add_mime_type("video/*")
+        file_dialog.add_filter(video_file_filter)
+
+        all_file_filter = Gtk.FileFilter()
+        all_file_filter.set_name('All files')
+        all_file_filter.add_pattern('*')
+        file_dialog.add_filter(all_file_filter)
+
+        if saved_video_folder is not None:
+            file_dialog.set_current_folder(saved_video_folder)
+
+        response = file_dialog.run()
+
+        if response == Gtk.ResponseType.OK:
+            path = file_dialog.get_filename()
+
+            if os.path.isdir(path):
+                message_dialog = Gtk.MessageDialog(parent=self.main_window, flags=0, message_type=Gtk.MessageType.ERROR,
+                                                   title='Invalid path')
+                message_dialog.add_button("OK", Gtk.ResponseType.OK)
+                message_dialog.format_secondary_text('You cannot select a folder!')
+                message_dialog.run()
+                message_dialog.destroy()
+                file_dialog.destroy()
+                self.choose_video(saved_video_folder, reset)
+            else:
+                file_dialog.destroy()
+                self.controller.video_selected(path)
+        else:
+            file_dialog.destroy()
+
+    def choose_output_folder(self, sender, suggested_folder, changing_output):
+        if changing_output:
+            confirm_dialog = Gtk.MessageDialog(parent=self, flags=0, message_type=Gtk.MessageType.QUESTION,
+                                               title='Confirm changing output folder')
+            confirm_dialog.format_secondary_text('Are you sure you want to change the output folder?\n\n'
+                                                 'Existing recordings will be kept. If the new output folder contains '
+                                                 'recordings, these will be loaded.')
+            confirm_dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
+            confirm_dialog.add_button("OK", Gtk.ResponseType.OK)
+            response = confirm_dialog.run()
+
+            if response != Gtk.ResponseType.OK:
+                confirm_dialog.destroy()
+                return
+
+            confirm_dialog.destroy()
+
         dialog = Gtk.FileChooserDialog(title="Select output folder", parent=self,
                                        action=Gtk.FileChooserAction.SELECT_FOLDER)
 
@@ -234,7 +307,7 @@ class MainWindow(Gtk.ApplicationWindow):
         path = dialog.get_filename()
         dialog.destroy()
 
-        self.controller.output_folder_path_selected(path)
+        self.controller.output_path_selected(path, changing_output)
 
     def video_loaded(self, controller, video_length, video_path, output_path):
         self.slider.set_range(1, video_length)
@@ -243,6 +316,9 @@ class MainWindow(Gtk.ApplicationWindow):
 
     def set_video_recordings_paths_labels(self, video_path, output_path):
         self.video_path_label.set_text(video_path)
+        self.recordings_path_label.set_text(output_path)
+
+    def update_output_path_label(self, sender, output_path):
         self.recordings_path_label.set_text(output_path)
 
     def show(self):
@@ -256,6 +332,7 @@ class MainWindow(Gtk.ApplicationWindow):
             self.video_area.area.destroy()
             self.narrations_window.destroy()
 
+        self.menu_bar.closing()
         self.controller.shutting_down()
 
     def add_speed_check_boxes(self):
@@ -290,6 +367,9 @@ class MainWindow(Gtk.ApplicationWindow):
         for time_ms in self.controller.get_recording_times():
             self.add_slider_tick(None, time_ms, None, False)
 
+    def remove_recording_ticks(self, *args):
+        self.slider.clear_marks()
+
     def set_monitor_label(self, sender, recording_state):
         colour = '#ff3300' if recording_state == 'recording' else 'black'
         self.monitor_label.set_markup('<span foreground="{}">Microphone level</span>'.format(colour))
@@ -301,9 +381,9 @@ class MainWindow(Gtk.ApplicationWindow):
             path_labels.set_property('max-width-chars', 50)
 
         video_path_placeholder = Gtk.Label()
-        video_path_placeholder.set_markup('<span><b>Annotating video:</b></span>')
+        video_path_placeholder.set_markup('<span><b>Video path</b></span>')
         recordings_path_placeholder = Gtk.Label()
-        recordings_path_placeholder.set_markup('<span><b>Saving recordings to:</b></span>')
+        recordings_path_placeholder.set_markup('<span><b>Output path</b></span>')
         self.paths_box.pack_start(video_path_placeholder, False, False, 10)
         self.paths_box.pack_start(self.video_path_label, False, False, 0)
         self.paths_box.pack_end(self.recordings_path_label, False, False, 0)
@@ -325,6 +405,21 @@ class MainWindow(Gtk.ApplicationWindow):
         if response == Gtk.ResponseType.OK:
             self.controller.delete_recording(time_ms)
 
+    def ask_confirmation_for_overwriting(self, sender, time_ms):
+        dialog = Gtk.MessageDialog(parent=self, flags=0, message_type=Gtk.MessageType.QUESTION,
+                                   title='Confirm overwrite at {}'.format(ms_to_timestamp(time_ms)))
+        dialog.add_button("No", Gtk.ResponseType.CANCEL)
+        dialog.add_button("Yes", Gtk.ResponseType.OK)
+        dialog.format_secondary_text('Are you sure you want to overwrite the highlighted recording?\n\n'
+                                     'By clicking yes you will start recording immediately.\n\n'
+                                     'You will have to click the recording button or press Enter to stop the recording,'
+                                     'even if you are using the hold-to-record mode')
+        response = dialog.run()
+        dialog.destroy()
+
+        if response == Gtk.ResponseType.OK:
+            self.controller.overwrite_recording(time_ms)
+
 
 class Menu(Gtk.MenuBar):
     def __init__(self, controller, main_window):
@@ -333,8 +428,12 @@ class Menu(Gtk.MenuBar):
         self.main_window = main_window
         self.file_menu = Gtk.Menu()
         self.load_video_menu_item = Gtk.MenuItem(label='Load video')
-        self.load_video_menu_item.connect('button-press-event', self.choose_video)
+        self.load_video_menu_item.connect('button-press-event', self.controller.load_video_menu_pressed)
+        self.change_output_menu_item = Gtk.MenuItem(label='Change output folder')
+        self.change_output_menu_item.connect('button-press-event', self.controller.change_output_menu_pressed)
+
         self.file_menu.append(self.load_video_menu_item)
+        self.file_menu.append(self.change_output_menu_item)
         self.file_menu_item = Gtk.MenuItem(label='File')
         self.file_menu_item.set_submenu(self.file_menu)
 
@@ -357,49 +456,30 @@ class Menu(Gtk.MenuBar):
         self.settings_menu_item = Gtk.MenuItem(label='Settings')
         self.settings_menu_item.set_submenu(self.settings_menu)
 
-        self.help_text_window = self.create_text_window('asd', 'Help')
-        self.help_text_window.connect('destroy', self.close_text_window)
+        self.help_window = HelpWindow()
 
-        self.about_menu = Gtk.Menu()
+        self.info_menu_ = Gtk.Menu()
         self.help_menu_item = Gtk.MenuItem(label='How to use the narrator')
-        self.help_menu_item.connect('button-press-event', self.show_text_window, self.help_text_window)
-        self.info_menu_item = Gtk.MenuItem(label='Info')
-        self.about_menu.append(self.help_menu_item)
-        self.about_menu.append(self.info_menu_item)
-        self.about_menu_item = Gtk.MenuItem('About')
-        self.about_menu_item.set_submenu(self.about_menu)
+        self.help_menu_item.connect('button-press-event', self.show_help)
+        self.about_menu_item = Gtk.MenuItem(label='About')
+        self.info_menu_.append(self.help_menu_item)
+        self.info_menu_.append(self.about_menu_item)
+        self.info_menu_item = Gtk.MenuItem('Info')
+        self.info_menu_item.set_submenu(self.info_menu_)
 
         self.append(self.file_menu_item)
         self.append(self.mic_menu_item)
         self.append(self.settings_menu_item)
-        self.append(self.about_menu_item)
+        self.append(self.info_menu_item)
 
-    def create_text_window(self, text, title):
-        text_view = Gtk.TextView()
-        text_buffer = text_view.get_buffer()
-        text_buffer.set_text("This is some text inside of a Gtk.TextView. "
-                                 + "Select text and click one of the buttons 'bold', 'italic', "
-                                 + "or 'underline' to modify the text accordingly.")
+        # TODO use https://lazka.github.io/pgi-docs/Gtk-3.0/classes/AboutDialog.html#Gtk.AboutDialog
+        # TODO destroy windows when closing
 
-        margin = 20
-        text_view.set_editable(False)
-        text_view.set_cursor_visible(False)
-        text_view.set_wrap_mode(Gtk.WrapMode.WORD)
-        text_view.set_left_margin(margin)
-        text_view.set_right_margin(margin)
+    def closing(self):
+        self.help_window.destroy()
 
-        text_window = Gtk.Window(title=title)
-        text_window.add(text_view)
-        text_window.set_size_request(800, 400)
-
-        return text_window
-
-    def close_text_window(self, window):
-        window.hide() #TODO fix this, text is not showing
-        return True #TODO destroy window when closing app
-
-    def show_text_window(self, widget, event, window):
-        window.show_all()
+    def show_help(self, *args):
+        self.help_window.show_all()
 
     def set_mic_items(self, mic_devices, current_mic):
         mic_item = None
@@ -427,60 +507,6 @@ class Menu(Gtk.MenuBar):
                                              'microphone level when you speak')
                 dialog.run()
                 dialog.destroy()
-
-    def choose_video(self, *args):
-        if self.controller.is_video_loaded:
-            confirm_dialog = Gtk.MessageDialog(parent=self.main_window, flags=0, message_type=Gtk.MessageType.QUESTION,
-                                               title='Confirm loading another video')
-            confirm_dialog.format_secondary_text('Are you sure you want to load another video?')
-            confirm_dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
-            confirm_dialog.add_button("OK", Gtk.ResponseType.OK)
-            response = confirm_dialog.run()
-
-            if response != Gtk.ResponseType.OK:
-                confirm_dialog.destroy()
-                return
-
-            confirm_dialog.destroy()
-
-        file_dialog = Gtk.FileChooserDialog(title="Open video", parent=self.main_window, action=Gtk.FileChooserAction.OPEN)
-        file_dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
-        file_dialog.add_button("OK", Gtk.ResponseType.OK)
-
-        video_file_filter = Gtk.FileFilter()
-        video_file_filter.set_name("Video files")
-        video_file_filter.add_mime_type("video/*")
-        file_dialog.add_filter(video_file_filter)
-
-        all_file_filter = Gtk.FileFilter()
-        all_file_filter.set_name('All files')
-        all_file_filter.add_pattern('*')
-        file_dialog.add_filter(all_file_filter)
-
-        saved_video_folder = self.controller.get_setting('video_folder', None)
-
-        if saved_video_folder is not None and os.path.exists(saved_video_folder):
-            file_dialog.set_current_folder(saved_video_folder)
-
-        response = file_dialog.run()
-
-        if response == Gtk.ResponseType.OK:
-            path = file_dialog.get_filename()
-
-            if os.path.isdir(path):
-                message_dialog = Gtk.MessageDialog(parent=self.main_window, flags=0, message_type=Gtk.MessageType.ERROR,
-                                                   title='Invalid path')
-                message_dialog.add_button("OK", Gtk.ResponseType.OK)
-                message_dialog.format_secondary_text('You cannot select a folder!')
-                message_dialog.run()
-                message_dialog.destroy()
-                file_dialog.destroy()
-                self.choose_video()
-            else:
-                file_dialog.destroy()
-                self.controller.video_selected(path)
-        else:
-            file_dialog.destroy()
 
 
 class VideoArea:
@@ -657,6 +683,7 @@ class NarrationsBox(Gtk.ListBox):
         self.controller.signal_sender.connect('reset_highlighted_rec', self.reset_highlighted)
         self.controller.signal_sender.connect('set_highlighted_rec', self.highlight_recording)
         self.controller.signal_sender.connect('recording_deleted', self.remove_annotation_box)
+        self.controller.signal_sender.connect('resetting_recordings', self.reset)
 
     def add_narration(self, sender, time_ms, rec_idx, new):
         box = Gtk.ButtonBox()
@@ -701,6 +728,11 @@ class NarrationsBox(Gtk.ListBox):
     def new_recording_visible(self, widget, event, time_ms, new):
         if new:
             self.scroll_to_rec(time_ms, box=widget)
+
+    def reset(self, *args):
+        self.remove_all_narrations_boxes()
+        self.reset_highlighted()
+        self.narrations_map = {}
 
     def remove_annotation_box(self, sender, time_ms):
         box = self.narrations_map.pop(time_ms, None)
@@ -765,9 +797,11 @@ class NarrationsBox(Gtk.ListBox):
         self.controller.go_to(time_ms, jumped=True)
         self.highlight_recording(None, time_ms, False, recording_box=widget.get_parent(), scroll=False)
 
+        # right click triggers overwriting
         if event.button == 3:
-            pass
-            # self.overwrite_recording(time_ms) #TODO fix this
+            # we ask from the main window so the dialog is modal wrt to that window
+            self.controller.pause_video()
+            self.main_window.ask_confirmation_for_overwriting(None, time_ms)
 
     def play_recording_pressed(self, widget, event, time_ms):
         self.controller.play_recording(time_ms)
@@ -780,6 +814,120 @@ class NarrationsBox(Gtk.ListBox):
     def delete_recording_pressed(self, widget, event, time_ms):
         # we ask from the main window so the dialog is modal wrt to that window
         self.main_window.ask_confirmation_for_deleting(None, time_ms, False)
+
+
+class HelpWindow(Gtk.Assistant):
+    def __init__(self):
+        Gtk.Assistant.__init__(self)
+        self.connect('cancel', self.cancel_clicked)
+
+        self.add_page('Getting started', self.getting_started_text())
+        self.add_page('Playing and recording', self.playing_and_recording_text())
+        self.add_page('Managing recordings', self.managing_recordings_text())
+        self.add_page('Keyboard shortcuts', self.keyboard_shortcuts_text())
+        self.add_page('Miscellaneous', self.etc_text(), is_last=True)
+
+        self.set_resizable(False)
+        self.set_size_request(800, 600)
+
+    def cancel_clicked(self, *args):
+        self.hide()
+
+    def add_page(self, title, text_lines, is_last=False):
+        page = Gtk.VBox()
+
+        for text in text_lines:
+            line = Gtk.Label()
+            line.set_markup(text)
+            line.set_line_wrap(True)
+            line.set_halign(Gtk.Align.START)
+            page.pack_start(line, False, False, 5)
+
+        self.append_page(page)
+        self.set_page_title(page, title)
+        self.set_page_complete(page, True)
+
+        if is_last:
+            self.set_page_type(page, Gtk.AssistantPageType.PROGRESS)
+
+    def getting_started_text(self):
+        return [
+            'This programs allows you to annotate actions in videos with your voice.',
+            'To start using the narrator, choose a video: <tt>File -> Load video</tt>.\n',
+            'Once you have chosen the video, you will be asked to choose where you want to save',
+            'your recordings. The narrator will create the folders',
+            '<tt>epic_narrator_recordings/video_name/</tt> under your selected output folder.\n',
+            'If you want to narrate another video after you launched the narrator, simply choose',
+            'the video as above. Recordings will be saved under the same folder selected before.',
+            'You can also change the output folder with <tt>File -> Change output folder</tt>.\n',
+            'Before starting to narrate, <b>make sure your microphone input is being captured correctly</b>.',
+            'You can do this by checking the signal displayed in the monitor level.',
+            'If you don''t see any signal as you speak, try to select a different microphone via',
+            'the dedicated menu.\n',
+        ]
+
+    def playing_and_recording_text(self):
+        return [
+            'Use the playback buttons to pause/play the video, as well as seeking backwards/forwards',
+            'and mute/unmute the video.',
+            'You can also use the slider to move across the video and change the playback speed.\n',
+            'To annotate an action press the microphone button.',
+            'This will pause the video and will start recording your voice immediately.',
+            'Once you have narrated the action, press the button again to stop the recording and',
+            'continue annotating.\n',
+            'Alternatively, you can record by holding down the microphone button, selecting',
+            '<tt>Settings -> Hold to record</tt>. In this case you will record your voice as',
+            'you hold the button down.\n',
+            'The end of the recording will be delayed by 0.5 seconds to avoid clipping.',
+        ]
+
+    def managing_recordings_text(self):
+        return [
+            '<b>Jumping to, playing, deleting and overwriting recordings</b>\n',
+            'You will see all your recording in the right-hand side panel.',
+            'You can jump to the action location by left-clicking on the timestamp (see more below).',
+            'You can play and delete each recording with the corresponding buttons.',
+            'If you switch on <tt> Settings -> Play video after deleting recording</tt>',
+            'the video will play automatically after you delete a recording.',
+            'If you want to play a recording and also jump to the video location at the same time',
+            'right-click the recording play button.\n',
+            '<b>Overwriting recording</b>\n',
+            'You can override a recording by right-clicking on its timestamp on the recording panel.',
+            'You will be asked for a confirmation before overwriting the recording.',
+            'The recording will start immediately as you confirm. To stop the recording you will have to',
+            'either click the record button or press Enter, even if you are using the hold-to-record mode.'
+        ]
+
+    def keyboard_shortcuts_text(self):
+        return [
+            '<b><tt>left arrow</tt></b> : seek backwards',
+            '<b><tt>right arrow</tt></b> : seek forwards',
+            '<b><tt>space bar</tt></b> : pause/play video',
+            '<b><tt>enter</tt></b> : start/stop recording',
+            '<b><tt>delete</tt></b> or <b><tt>backspace</tt></b> : delete the highlighted recording',
+            '<b><tt>m</tt></b> : mute/unmute video',
+            '<b><tt>o</tt></b> : overwrite highlighted recording'
+        ]
+
+    def etc_text(self):
+        return [
+            '<b>Audio format</b>\n',
+            'Recordings will be saved in mono uncompress format (<tt>.wav</tt>) sampled at',
+            'the default sample rate of your input audio interface.\n',
+            '<b>Settings</b>\n',
+            'The narrator will save some settings under a directory named <tt>epic_narrator</tt>',
+            'automatically created in your home directory.',
+            'The settings include the path of the video you narrated last, as well as',
+            'the output folder, the used microphone and a few other things.\n',
+            'The narrator will read these settings to automatically load the last video and',
+            'the saved recordings, as well as to set the output folder and all the remaining settings.\n',
+            '<b>Logging</b>\n',
+            'The narrator will write event logs to a file under the same settings directory, i.e.',
+            '<tt>$HOME/epic_narrator/narrator.log</tt>.',
+            'The logs are saved in a rotating manner. Log files are limited to a maximum of 5MB,',
+            'for a maximum of 3 files.'
+        ]
+
 
 
 def do_nothing_on_key_press(*args):
