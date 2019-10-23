@@ -235,7 +235,7 @@ class MainWindow(Gtk.ApplicationWindow):
         self.update_time_position(current_time_ms)
 
     def choose_video(self, sender, saved_video_folder, reset):
-        LOG.info('Opening file chooser dialog for video {saved folder={}, reset={})'.format(saved_video_folder, reset))
+        LOG.info('Opening file chooser dialog for video (saved folder={}, reset={})'.format(saved_video_folder, reset))
 
         if reset:
             confirm_dialog = Gtk.MessageDialog(parent=self, flags=0, message_type=Gtk.MessageType.QUESTION,
@@ -290,7 +290,7 @@ class MainWindow(Gtk.ApplicationWindow):
 
     def choose_output_folder(self, sender, suggested_folder, changing_output):
         LOG.info('Opening file chooser dialog for output '
-                 '{suggested folder={}, changing output={})'.format(suggested_folder, changing_output))
+                 '(suggested folder={}, changing output={})'.format(suggested_folder, changing_output))
 
         if changing_output:
             confirm_dialog = Gtk.MessageDialog(parent=self, flags=0, message_type=Gtk.MessageType.QUESTION,

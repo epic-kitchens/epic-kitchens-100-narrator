@@ -37,7 +37,7 @@ class Recorder:
             self.stop_recording()  # this will wait for any open files to be closed
 
         self.stream.close(ignore_errors=True)
-        LOG.info('Stram closed')
+        LOG.info('Stream closed')
 
     def start_recording(self, filename):
         LOG.info("Starting new recording, saving to {}".format(filename))

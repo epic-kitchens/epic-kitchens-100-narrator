@@ -509,6 +509,9 @@ class Controller:
                 self.signal_sender.emit('set_highlighted_rec', self.highlighted_rec, False)
 
     def record_button_clicked(self, *args):
+        if not self.is_video_loaded:
+            return
+
         LOG.info("Record button pressed")
 
         if self.get_setting('hold_to_record', False):
@@ -519,6 +522,9 @@ class Controller:
             self.toggle_record()
 
     def record_button_released(self, *args):
+        if not self.is_video_loaded:
+            return
+
         LOG.info("Record button released")
 
         if self.get_setting('hold_to_record', False):
