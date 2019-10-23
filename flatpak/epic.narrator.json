@@ -36,6 +36,7 @@
                 "install -D player.py /app/bin/player.py",
                 "install -D recordings.py /app/bin/recordings.py",
                 "install -D settings.py /app/bin/settings.py",
+                "install -D __version__.py /app/bin/__version__.py",
                 "install -D epic-24.png /app/share/icons/hicolor/24x24/apps/uk.ac.bris.epic.narrator.png",
                 "install -D epic-32.png /app/share/icons/hicolor/32x32/apps/uk.ac.bris.epic.narrator.png",
                 "install -D epic-48.png /app/share/icons/hicolor/48x48/apps/uk.ac.bris.epic.narrator.png",
@@ -72,6 +73,10 @@
                 {
                     "type": "file",
                     "path": "../settings.py"
+                },
+                {
+                    "type": "file",
+                    "path": "../__version__.py"
                 },
                 {
                     "type": "file",
