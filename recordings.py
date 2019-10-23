@@ -9,6 +9,7 @@ LOG = logging.getLogger('epic_narrator.recordings')
 
 class Recordings:
     def __init__(self, output_parent, video_path, audio_extension='wav'):
+        LOG.info('Creating recordings')
         self.base_folder = Recordings.get_recordings_path(output_parent)
         self.video_path = video_path
         self.video_narrations_folder = Recordings.get_recordings_path_for_video(self.base_folder, self.video_path,
@@ -50,8 +51,7 @@ class Recordings:
 
     def scan_folder(self):
         LOG.info("Scanning {} for audio files".format(self.video_narrations_folder))
-        audio_files = glob.glob(os.path.join(self.video_narrations_folder,
-                                            '*.{}'.format(self.audio_extension)))
+        audio_files = glob.glob(os.path.join(self.video_narrations_folder, '*.{}'.format(self.audio_extension)))
         LOG.info("Found {} existing recordings".format(len(audio_files)))
         return audio_files
 

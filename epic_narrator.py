@@ -91,19 +91,12 @@ def get_git_commit_hash():
 
 def setup_logging(args):
     log_level = getattr(logging, args.verbosity.upper())
-    #TODO polish logging, adding timestamps and making sure everything is logged propoerly
-
-    '''
-    if args.log_file is not None:
-        logging.basicConfig(filename=args.log_file)
-    else:
-        logging.basicConfig()
-    '''
     log_path = os.path.join(Settings.get_epic_narrator_directory(),
                             'narrator.log') if args.log_file is None else args.log_file
 
-    # add a rotating handler
     handler = RotatingFileHandler(log_path, maxBytes=5000000, backupCount=3)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
     LOG.addHandler(handler)
     LOG.setLevel(log_level)
 

@@ -37,6 +37,7 @@ class Recorder:
             self.stop_recording()  # this will wait for any open files to be closed
 
         self.stream.close(ignore_errors=True)
+        LOG.info('Stram closed')
 
     def start_recording(self, filename):
         LOG.info("Starting new recording, saving to {}".format(filename))
@@ -48,10 +49,7 @@ class Recorder:
         LOG.info("Stopping recording, saved to {}".format(self.current_file.name))
         self.is_recording = False
         LOG.debug("Closing {}".format(self.current_file.name))
-        self.current_file.hide()
-
-        # while self.current_file is not None and not self.current_file.closed:
-        #    time.sleep(0.01)  # waiting for file to be closed
+        self.current_file.close()
 
     def audio_callback(self, indata, frames, time, status):
         """This is called (from a separate thread) for each audio block."""
@@ -89,7 +87,4 @@ class Recorder:
 
 
 if __name__ == '__main__':
-    print(sd.query_devices())
-    #recorder = Recorder(set_plot=True)
-    #recorder.start_monitor()
     print(Recorder.get_devices())

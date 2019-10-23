@@ -10,7 +10,7 @@ from gi.repository import Gtk, Gdk, GLib, GObject
 from recorder import Recorder
 from settings import Settings
 
-LOG = logging.getLogger('epic_narrator.recorder')
+LOG = logging.getLogger('epic_narrator.controller')
 
 
 class SignalSender(GObject.Object):
@@ -83,6 +83,7 @@ class SignalSender(GObject.Object):
 
 class Controller:
     def __init__(self, this_os):
+        LOG.info('Creating controller')
         self.settings = Settings()
         self.recorder = self.create_recorder()
         self.recordings = None
@@ -104,8 +105,10 @@ class Controller:
 
         self.signal_sender = SignalSender()
         self.signal_sender.connect('video_moving', self.catch_video_moving)
+        LOG.info('Controller created')
 
     def create_recorder(self):
+        LOG.info('Creating recorder')
         saved_microphone = self.settings.get_setting('microphone')
 
         if saved_microphone is not None:
@@ -150,10 +153,7 @@ class Controller:
         return self.recorder.is_recording
 
     def shutting_down(self, *args):
-        '''
-        if self.is_video_loaded:
-            self.settings.update_settings(last_video_position=self.player.get_time())
-        '''
+        LOG.info('shutting down')
 
         self.recorder.close_stream()
 
@@ -166,6 +166,8 @@ class Controller:
         Gtk.main_quit()
 
     def change_mic(self, mic_id):
+        LOG.info('Changing mic')
+
         if self.recorder.is_recording:
             self.recorder.stop_recording()
 
@@ -189,6 +191,8 @@ class Controller:
         if self.is_recording():
             return
 
+        LOG.info('Load video menu pressed')
+
         if self.is_video_loaded:
             self.pause_video()
 
@@ -205,6 +209,8 @@ class Controller:
         if self.is_recording() or not self.is_video_loaded:
             return
 
+        LOG.info('Change output menu pressed')
+
         self.pause_video()
 
         video_folder = os.path.dirname(self.video_path)
@@ -214,6 +220,8 @@ class Controller:
         self.signal_sender.emit('ask_output_path', suggested_folder, True)
 
     def video_selected(self, video_path):
+        LOG.info('Video selected: {}'.format(video_path))
+
         self.video_path = video_path
         video_folder = os.path.dirname(video_path)
         self.settings.update_settings(last_video=video_path, video_folder=video_folder)
@@ -229,6 +237,8 @@ class Controller:
             self.output_path_selected(saved_output, False)
 
     def output_path_selected(self, output_path, changing_output):
+        LOG.info('Output path selected: {}'.format(output_path))
+
         self.output_path = output_path
         self.settings.update_settings(output_path=self.output_path)
 
@@ -239,10 +249,12 @@ class Controller:
             self.setup_narrator()
 
     def ui_video_area_ready(self, widget):
+        LOG.info('Video area ready')
         self.player = Player(widget, self)
         self.ready_to_load_video()
 
     def ready_to_load_video(self):
+        LOG.info('Ready to load video')
         last_video_path = self.get_setting('last_video', None)
 
         if last_video_path is not None and os.path.exists(last_video_path):
@@ -250,6 +262,8 @@ class Controller:
             self.loaded_last_video = True
 
     def setup_narrator(self):
+        LOG.info('Setting up narrator')
+
         if self.is_video_loaded:
             self.reset()
 
@@ -263,6 +277,8 @@ class Controller:
         self.player.load_video(self.video_path)
 
     def setup_recordings(self):
+        LOG.info('Setting up recordings')
+
         if self.recordings is not None:
             del self.recordings
             self.signal_sender.emit('resetting_recordings')
@@ -276,6 +292,8 @@ class Controller:
                 self.signal_sender.emit('recording_added', rec_ms, rec_idx, False)
 
     def reset(self):
+        LOG.info('Resetting')
+
         self.is_video_loaded = False
         self.loaded_last_video = False
         self.holding_enter = False
@@ -289,6 +307,8 @@ class Controller:
         self.player.reset()
 
     def video_loaded(self):
+        LOG.info('Video loaded')
+
         self.is_video_loaded = True
         self.video_length = self.player.get_video_length()
         self.signal_sender.emit('video_loaded', self.video_length, self.video_path, self.output_path)
@@ -298,12 +318,21 @@ class Controller:
             self.go_to(last_position, jumped=True)
 
     def reload_current_video(self):
+        LOG.info('Reloading current video')
+
         self.pause_video()
         # set the last position to the end, so when we reload the video (we have to do that) is at the end
         self.settings.update_settings(last_video_position=self.video_length)
         self.player.load_video(self.video_path)
 
     def playback_speed_selected(self, sender, speed):
+        current_speed = self.get_setting('playback_speed', 1)
+
+        if current_speed == speed:
+            return
+
+        LOG.info('Playback speed selected: {}'.format(speed))
+
         self.settings.update_settings(playback_speed=speed)
 
         if self.is_video_loaded:
@@ -323,24 +352,25 @@ class Controller:
             return
 
         LOG.info("Play video")
+
         self.signal_sender.emit('playback_changed', 'play')
         self.player.play_video()
-        # print('play', threading.current_thread())
 
     def pause_video(self, *args):
         if not self.is_video_loaded or self.recorder.is_recording:
             return
 
         LOG.info("Pause video")
+
         self.signal_sender.emit('playback_changed', 'pause')
         self.player.pause_video()
-        # print('pause', threading.current_thread())
 
     def toggle_player_playback(self, *args):
         if not self.is_video_loaded or self.recorder.is_recording:
             return
 
         LOG.info("Toggle playback")
+
         if self.player.is_playing():
             self.pause_video()
         else:
@@ -351,6 +381,7 @@ class Controller:
             return
 
         LOG.info("Toggle audio")
+
         if self.player.is_mute():
             self.unmute_video()
         else:
@@ -367,6 +398,8 @@ class Controller:
         self.signal_sender.emit('audio_state_changed', 'unmuted')
 
     def reset_highlighted_rec(self, reset_index=True):
+        LOG.info('Resetting highlighted rec')
+
         self.signal_sender.emit('reset_highlighted_rec')
         self.highlighted_rec = None
 
@@ -377,6 +410,8 @@ class Controller:
         if not self.is_video_loaded or self.player.is_seeking() or self.recorder.is_recording:
             return
 
+        LOG.info('Start seeking')
+
         self.reset_highlighted_rec()
         self.player.start_seek(direction)
 
@@ -386,6 +421,8 @@ class Controller:
     def stop_seek(self, *args):
         if not self.is_video_loaded or not self.player.is_seeking():
             return
+
+        LOG.info('Stop seeking')
 
         self.player.stop_seek()
 
@@ -413,6 +450,8 @@ class Controller:
         if not self.is_video_loaded or self.recorder.is_recording:
             return
 
+        LOG.info('Start dragging')
+
         self.is_dragging = True
         self.reset_highlighted_rec()
 
@@ -423,6 +462,11 @@ class Controller:
             self.was_playing_before_dragging = False
 
     def stop_dragging(self, time_ms):
+        if not self.is_video_loaded or self.recorder.is_recording:
+            return
+
+        LOG.info('Stop dragging')
+
         self.go_to(time_ms, jumped=True)
         self.is_dragging = False
 
@@ -432,6 +476,8 @@ class Controller:
     def catch_video_moving(self, sender, time_ms, is_seeking):
         if not self.is_video_loaded:
             return
+
+        # this is called constantly as the video plays, better not logging anything here
 
         self.highlight_recording(sender, time_ms, is_seeking)
 
@@ -452,7 +498,7 @@ class Controller:
             if rec is not None:
                 self.highlighted_rec = rec
                 self.signal_sender.emit('set_highlighted_rec', self.highlighted_rec, False)
-            else:
+            elif self.highlighted_rec is not None:
                 self.reset_highlighted_rec()
         else:
             rec = self.recordings.get_next_from_highlighted(time_ms)
@@ -464,6 +510,7 @@ class Controller:
 
     def record_button_clicked(self, *args):
         LOG.info("Record button pressed")
+
         if self.get_setting('hold_to_record', False):
             if not self.holding_enter and not self.recorder.is_recording:
                 self.holding_enter = True
@@ -473,6 +520,7 @@ class Controller:
 
     def record_button_released(self, *args):
         LOG.info("Record button released")
+
         if self.get_setting('hold_to_record', False):
             if self.recorder.is_recording:
                 self.invoke_stop_recording()
@@ -519,9 +567,10 @@ class Controller:
             self.signal_sender.emit('recording_added', rec_time, rec_idx, True)
 
         self.signal_sender.emit('recording_state_changed', 'recording')
+        LOG.info('Start recording')
 
     def invoke_stop_recording(self):
-        LOG.info("Stop recording in 0.5 seconds")
+        LOG.info("Stop recording in {} ms".format(self.stop_recording_delay_ms))
         GLib.timeout_add(self.stop_recording_delay_ms, self.stop_recording)
 
     def stop_recording(self):
@@ -538,6 +587,8 @@ class Controller:
         return False  # reset the GLib timer
 
     def overwrite_recording(self, time_ms):
+        LOG.info('Overwriting recording at {}ms'.format(time_ms))
+
         if self.recorder.is_recording:
             return
 
@@ -557,6 +608,8 @@ class Controller:
             self.player.play_recording(recording_path)
 
     def delete_recording(self, time_ms):
+        LOG.info('Deleting recording at {}ms'.format(time_ms))
+
         if self.player.is_playing():
             self.pause_video()
 

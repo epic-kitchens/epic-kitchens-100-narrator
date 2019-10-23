@@ -2,6 +2,9 @@ import logging
 import os
 import queue
 import matplotlib as mpl
+
+from __version__ import __version__, __author__
+
 mpl.use('PS')
 import matplotlib.pyplot as plt
 import gi
@@ -14,11 +17,12 @@ from matplotlib.backends.backend_gtk3agg import (FigureCanvasGTK3Agg as FigureCa
 from recordings import ms_to_timestamp
 
 
-LOG = logging.getLogger('epic_narrator')
+LOG = logging.getLogger('ui')
 
 
 class MainWindow(Gtk.ApplicationWindow):
     def __init__(self, controller, this_os, single_window=True):
+        LOG.info('Creating main window')
         Gtk.ApplicationWindow.__init__(self, title='Epic Narrator')
         gtk_settings = Gtk.Settings.get_default()
         gtk_settings.set_property("gtk-application-prefer-dark-theme", False)
@@ -102,11 +106,6 @@ class MainWindow(Gtk.ApplicationWindow):
         self.slider.add_mark(time_ms, Gtk.PositionType.TOP, None)
 
     def slider_moved(self, *args):
-        LOG.info("Slider moved")
-        # this is called when is moved by the user
-        if not self.controller.is_video_loaded:
-            return  # just to make sure we don't move the slider before we get the video duration
-
         slider_pos_ms = self.slider.get_value()
         self.controller.go_to(slider_pos_ms)
 
@@ -126,9 +125,12 @@ class MainWindow(Gtk.ApplicationWindow):
         return monitor.width, monitor.height
 
     def pack_widgets(self):
+        LOG.info('Packing widgets')
         video_size = (900, 400)
         main_window_size = (900, 300)
-        narrations_box_size = (300, 760)
+        narrations_box_size = (300, 780)
+
+        icon_path = get_icon_path()
 
         try:
             monitor_size = self.get_monitor_size()
@@ -137,7 +139,7 @@ class MainWindow(Gtk.ApplicationWindow):
 
             top_left_coordinate = (max(0, top_left_coordinate[0]), max(0, top_left_coordinate[1]))
         except Exception:
-            top_left_coordinate = (0, 0)
+            top_left_coordinate = (100, 100)
 
         if self.single_window:
             self.left_box.pack_start(self.video_area.area, True, True, 0)
@@ -182,11 +184,16 @@ class MainWindow(Gtk.ApplicationWindow):
 
             # moving windows close to one another
             self.video_area.area.move(top_left_coordinate[0], top_left_coordinate[1])
-            self.move(top_left_coordinate[0], top_left_coordinate[1]+video_size[1]+44)
-            self.narrations_window.move(top_left_coordinate[0]+video_size[0]+5, top_left_coordinate[1])
+            self.move(top_left_coordinate[0], top_left_coordinate[1]+video_size[1]+60)
+            self.narrations_window.move(top_left_coordinate[0]+video_size[0]+10, top_left_coordinate[1])
 
             self.video_area.area.set_can_focus(False)
             self.narrations_window.set_can_focus(False)
+
+            if icon_path is not None:
+                self.video_area.area.set_icon_from_file(icon_path)
+                self.narrations_window.set_icon_from_file(icon_path)
+
             self.video_area.area.show()
             self.narrations_window.show_all()
 
@@ -228,6 +235,8 @@ class MainWindow(Gtk.ApplicationWindow):
         self.update_time_position(current_time_ms)
 
     def choose_video(self, sender, saved_video_folder, reset):
+        LOG.info('Opening file chooser dialog for video {saved folder={}, reset={})'.format(saved_video_folder, reset))
+
         if reset:
             confirm_dialog = Gtk.MessageDialog(parent=self, flags=0, message_type=Gtk.MessageType.QUESTION,
                                                title='Confirm loading another video')
@@ -280,6 +289,9 @@ class MainWindow(Gtk.ApplicationWindow):
             file_dialog.destroy()
 
     def choose_output_folder(self, sender, suggested_folder, changing_output):
+        LOG.info('Opening file chooser dialog for output '
+                 '{suggested folder={}, changing output={})'.format(suggested_folder, changing_output))
+
         if changing_output:
             confirm_dialog = Gtk.MessageDialog(parent=self, flags=0, message_type=Gtk.MessageType.QUESTION,
                                                title='Confirm changing output folder')
@@ -388,6 +400,8 @@ class MainWindow(Gtk.ApplicationWindow):
         self.paths_box.pack_end(recordings_path_placeholder, False, False, 10)
 
     def ask_confirmation_for_deleting(self, sender, time_ms, current_recording):
+        LOG.info('Asking for deleting confirmation (rec={}ms, current rec={})'.format(time_ms, current_recording))
+
         if current_recording:
             msg = 'Are you sure you want to delete the current recording?'
         else:
@@ -404,6 +418,8 @@ class MainWindow(Gtk.ApplicationWindow):
             self.controller.delete_recording(time_ms)
 
     def ask_confirmation_for_overwriting(self, sender, time_ms):
+        LOG.info('Asking for overwriting confirmation (rec={}ms)'.format(time_ms))
+
         dialog = Gtk.MessageDialog(parent=self, flags=0, message_type=Gtk.MessageType.QUESTION,
                                    title='Confirm overwrite at {}'.format(ms_to_timestamp(time_ms)))
         dialog.add_button("No", Gtk.ResponseType.CANCEL)
@@ -507,15 +523,14 @@ class Menu(Gtk.MenuBar):
     def show_about_dialog(self, *args):
         about_dialog = Gtk.AboutDialog(parent=self.main_window)
         about_dialog.set_program_name('EPIC Narrator')
-        about_dialog.set_authors(['Davide Moltisanti'])
+        about_dialog.set_authors([__author__])
         about_dialog.set_copyright('University of Bristol')
         about_dialog.set_website('https://github.com/epic-kitchens/epic-narrator')
         about_dialog.set_website_label('GitHub webpage')
-        about_dialog.set_version('v.1.0')
+        about_dialog.set_version('v' + __version__)
         about_dialog.set_license_type(Gtk.License.CUSTOM)
-        about_dialog.set_license('You may freely use this software for your non-commercial purposes.\n'
-                                 'You cannot edit and re-destribute this software.')
-        about_dialog.set_wrap_license(True)
+        about_dialog.set_license('Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)')
+        about_dialog.set_wrap_license(False)
 
         icon_path = get_icon_path()
 
@@ -812,6 +827,8 @@ class NarrationsBox(Gtk.ListBox):
             self.scroll_to_rec(time_ms, box=recording_box)
 
     def recording_timestamp_pressed(self, widget, event, time_ms):
+        LOG.info('Recording timestamp pressed (time={}ms)'.format(time_ms))
+
         self.controller.go_to(time_ms, jumped=True)
         self.highlight_recording(None, time_ms, False, recording_box=widget.get_parent(), scroll=False)
 
@@ -822,6 +839,8 @@ class NarrationsBox(Gtk.ListBox):
             self.main_window.ask_confirmation_for_overwriting(None, time_ms)
 
     def play_recording_pressed(self, widget, event, time_ms):
+        LOG.info('Recording play pressed (time={}ms)'.format(time_ms))
+
         self.controller.play_recording(time_ms)
 
         # right click moves to the video
@@ -830,6 +849,8 @@ class NarrationsBox(Gtk.ListBox):
             self.highlight_recording(None, time_ms, False, recording_box=widget.get_parent(), scroll=False)
 
     def delete_recording_pressed(self, widget, event, time_ms):
+        LOG.info('Recording delete pressed (time={}ms)'.format(time_ms))
+
         # we ask from the main window so the dialog is modal wrt to that window
         self.main_window.ask_confirmation_for_deleting(None, time_ms, False)
 

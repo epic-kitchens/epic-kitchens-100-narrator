@@ -1,12 +1,17 @@
 import ctypes
+import logging
+import threading
+
 import vlc
 import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import GLib
 
+LOG = logging.getLogger('epic_narrator.player')
 
 class Player:
     def __init__(self, widget, controller):
+        LOG.info('Creating VLC player')
         self.controller = controller
         self.vlc_instance = vlc.Instance('--no-xlib')
         self.video_player = self.vlc_instance.media_player_new()
@@ -42,6 +47,8 @@ class Player:
         rec_events.event_attach(vlc.EventType.MediaPlayerStopped, self.finished_playing_recording_handler)
 
     def set_vlc_window(self, widget, this_os):
+        LOG.info('Setting up vlc window (os={})'.format(this_os))
+
         if this_os == 'linux':
             win_id = widget.get_window().get_xid()
             self.video_player.set_xwindow(win_id)
@@ -65,14 +72,18 @@ class Player:
             handle = gdkdll.gdk_win32_window_get_handle(drawingarea_gpointer)
             self.video_player.set_hwnd(int(handle))
         else:
+            LOG.error('Cannot deal with this platform: {}'.format(this_os))
             raise Exception('Cannot deal with this platform: {}'.format(this_os))
 
     def shutting_down(self):
+        LOG.info('Releasing vlc instance (thread={})'.format(threading.current_thread().getName()))
+
         self.video_player.stop()
         self.rec_player.stop()
         self.vlc_instance.release()
 
     def load_video(self, video_path):
+        LOG.info('Loading video {} (thread={})'.format(video_path, threading.current_thread().getName()))
         media = self.vlc_instance.media_new_path(video_path)
         self.video_player.set_mrl(media.get_mrl())
         self.play_video()  # we need to play the video for a while to get the length in milliseconds
@@ -81,38 +92,49 @@ class Player:
         GLib.idle_add(self.video_loaded)
 
     def video_loaded(self):
+        LOG.info('Video loaded (thread={})'.format(threading.current_thread().getName()))
         self.pause_video()
         self.video_length = self.get_video_length()
         self.controller.video_loaded()
 
     def get_video_length(self):
+        LOG.info('Getting video length (thread={})'.format(threading.current_thread().getName()))
         return self.video_player.get_length()
 
     def play_video(self):
+        LOG.info('Playing video (thread={})'.format(threading.current_thread().getName()))
         self.video_player.play()
 
     def pause_video(self):
+        LOG.info('Pausing video (thread={})'.format(threading.current_thread().getName()))
         self.video_player.set_pause(True)
 
     def set_speed(self, speed):
+        LOG.info('Setting playback speed to {} (thread={})'.format(speed, threading.current_thread().getName()))
         self.video_player.set_rate(speed)
 
     def mute_video(self):
+        LOG.info('Mute video (thread={})'.format(threading.current_thread().getName()))
         self.video_player.audio_set_mute(True)
 
     def unmute_video(self):
+        LOG.info('Unmute video (thread={})'.format(threading.current_thread().getName()))
         self.video_player.audio_set_mute(False)
 
     def get_current_position(self):
+        # this is called constantly as the video plays, avoid logging
         return max(0, self.video_player.get_time())
 
     def is_playing(self):
+        LOG.info('Checking if video is playing (thread={})'.format(threading.current_thread().getName()))
         return self.video_player.is_playing()
 
     def is_mute(self):
+        LOG.info('Checking if video is mute (thread={})'.format(threading.current_thread().getName()))
         return self.video_player.audio_get_mute()
 
     def is_seeking(self):
+        # this is called constantly as the video plays, avoid logging
         return self._is_seeking or self._seeking_timeout != 0
 
     def video_moving_handler(self, *args):
@@ -120,9 +142,12 @@ class Player:
         GLib.idle_add(self.video_moving, priority=GLib.PRIORITY_HIGH)
 
     def video_moving(self):
+        # this is called constantly as the video plays, avoid logging
         self.controller.signal_sender.emit('video_moving', self.get_current_position(), self.is_seeking())
 
     def start_seek(self, direction):
+        LOG.info('Start seeking (thread={})'.format(threading.current_thread().getName()))
+
         if self.video_player.is_playing():
             self.pause_video()
             self.was_playing_before_seek = True
@@ -133,6 +158,8 @@ class Player:
         self._seeking_timeout = GLib.timeout_add(self.seek_refresh, self.seek, step)
 
     def stop_seek(self):
+        LOG.info('Stop seeking (thread={})'.format(threading.current_thread().getName()))
+
         GLib.source_remove(self._seeking_timeout)
         self._seeking_timeout = 0
 
@@ -153,16 +180,21 @@ class Player:
         return True
 
     def go_to(self, time_ms):
+        LOG.info('Go to {}ms (thread={})'.format(time_ms, threading.current_thread().getName()))
+
         self.video_player.set_time(int(time_ms))
 
     def video_ended_handler(self, *args):
         GLib.idle_add(self.video_ended)
 
     def video_ended(self):
+        LOG.info('Video ended (thread={})'.format(threading.current_thread().getName()))
         self.video_player.stop()
         self.controller.reload_current_video()
 
     def play_recording(self, recording_path):
+        LOG.info('Playing recording at {} (thread={})'.format(recording_path, threading.current_thread().getName()))
+
         audio_media = self.vlc_instance.media_new_path(recording_path)
         self.rec_player.audio_set_mute(False)  # we need to this every time
         self.rec_player.set_mrl(audio_media.get_mrl())
@@ -175,6 +207,8 @@ class Player:
         self.controller.recording_finished_playing()
 
     def reset(self):
+        LOG.info('Resetting (thread={})'.format(threading.current_thread().getName()))
+
         self.video_length = 0
         self._seeking_timeout = 0
         self.was_playing_before_seek = None
