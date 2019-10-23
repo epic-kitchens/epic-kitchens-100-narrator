@@ -8,7 +8,7 @@ import gi
 import numpy as np
 
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk, GLib, Gdk, Pango, GObject
+from gi.repository import Gtk, GLib, Gdk, Pango, GObject, GdkPixbuf
 from matplotlib.animation import FuncAnimation
 from matplotlib.backends.backend_gtk3agg import (FigureCanvasGTK3Agg as FigureCanvas)
 from recordings import ms_to_timestamp
@@ -28,12 +28,10 @@ class MainWindow(Gtk.ApplicationWindow):
         else:
             plt.switch_backend('GTK3Agg')
 
-        try:
-            # set an icon if running from the command line
-            # this won't work inside flatpak, but in flatpak we have a .desktop file, so we just keep going
-            self.set_icon_from_file(os.path.join("data", "epic.png"))
-        except Exception:
-            pass
+        icon_path = get_icon_path()
+
+        if icon_path is not None:
+            self.set_icon_from_file(icon_path)
 
         self.controller = controller
         self.ready = False
@@ -459,9 +457,10 @@ class Menu(Gtk.MenuBar):
         self.help_window = HelpWindow()
 
         self.info_menu_ = Gtk.Menu()
-        self.help_menu_item = Gtk.MenuItem(label='How to use the narrator')
+        self.help_menu_item = Gtk.MenuItem(label='Help')
         self.help_menu_item.connect('button-press-event', self.show_help)
         self.about_menu_item = Gtk.MenuItem(label='About')
+        self.about_menu_item.connect('button-press-event', self.show_about_dialog)
         self.info_menu_.append(self.help_menu_item)
         self.info_menu_.append(self.about_menu_item)
         self.info_menu_item = Gtk.MenuItem('Info')
@@ -471,9 +470,6 @@ class Menu(Gtk.MenuBar):
         self.append(self.mic_menu_item)
         self.append(self.settings_menu_item)
         self.append(self.info_menu_item)
-
-        # TODO use https://lazka.github.io/pgi-docs/Gtk-3.0/classes/AboutDialog.html#Gtk.AboutDialog
-        # TODO destroy windows when closing
 
     def closing(self):
         self.help_window.destroy()
@@ -507,6 +503,28 @@ class Menu(Gtk.MenuBar):
                                              'microphone level when you speak')
                 dialog.run()
                 dialog.destroy()
+
+    def show_about_dialog(self, *args):
+        about_dialog = Gtk.AboutDialog(parent=self.main_window)
+        about_dialog.set_program_name('EPIC Narrator')
+        about_dialog.set_authors(['Davide Moltisanti'])
+        about_dialog.set_copyright('University of Bristol')
+        about_dialog.set_website('https://github.com/epic-kitchens/epic-narrator')
+        about_dialog.set_website_label('GitHub webpage')
+        about_dialog.set_version('v.1.0')
+        about_dialog.set_license_type(Gtk.License.CUSTOM)
+        about_dialog.set_license('You may freely use this software for your non-commercial purposes.\n'
+                                 'You cannot edit and re-destribute this software.')
+        about_dialog.set_wrap_license(True)
+
+        icon_path = get_icon_path()
+
+        if icon_path is not None:
+            icon = GdkPixbuf.Pixbuf.new_from_file_at_size(icon_path, 64, 64)
+            about_dialog.set_logo(icon)
+
+        about_dialog.run()
+        about_dialog.destroy()
 
 
 class VideoArea:
@@ -820,6 +838,7 @@ class HelpWindow(Gtk.Assistant):
     def __init__(self):
         Gtk.Assistant.__init__(self)
         self.connect('cancel', self.cancel_clicked)
+        self.connect('close', self.cancel_clicked)
 
         self.add_page('Getting started', self.getting_started_text())
         self.add_page('Playing and recording', self.playing_and_recording_text())
@@ -829,6 +848,11 @@ class HelpWindow(Gtk.Assistant):
 
         self.set_resizable(False)
         self.set_size_request(800, 600)
+
+        icon_path = get_icon_path()
+
+        if icon_path is not None:
+            self.set_icon_from_file(icon_path)
 
     def cancel_clicked(self, *args):
         self.hide()
@@ -849,10 +873,12 @@ class HelpWindow(Gtk.Assistant):
 
         if is_last:
             self.set_page_type(page, Gtk.AssistantPageType.PROGRESS)
+        else:
+            self.set_page_type(page, Gtk.AssistantPageType.CONTENT)
 
     def getting_started_text(self):
         return [
-            'This programs allows you to annotate actions in videos with your voice.',
+            'This program allows you to annotate actions in videos with your voice.',
             'To start using the narrator, choose a video: <tt>File -> Load video</tt>.\n',
             'Once you have chosen the video, you will be asked to choose where you want to save',
             'your recordings. The narrator will create the folders',
@@ -870,7 +896,7 @@ class HelpWindow(Gtk.Assistant):
         return [
             'Use the playback buttons to pause/play the video, as well as seeking backwards/forwards',
             'and mute/unmute the video.',
-            'You can also use the slider to move across the video and change the playback speed.\n',
+            'You can also use the slider to move across the video.\n',
             'To annotate an action press the microphone button.',
             'This will pause the video and will start recording your voice immediately.',
             'Once you have narrated the action, press the button again to stop the recording and',
@@ -928,6 +954,19 @@ class HelpWindow(Gtk.Assistant):
             'for a maximum of 3 files.'
         ]
 
+
+def get_icon_path():
+    local = os.path.join("data", "epic.png")
+
+    if os.path.exists(local):
+        return local
+
+    flatpak = '/app/share/icons/hicolor/256x256/apps/uk.ac.bris.epic.narrator.png'
+
+    if os.path.exists(flatpak):
+        return flatpak
+
+    return None
 
 
 def do_nothing_on_key_press(*args):

@@ -91,6 +91,7 @@ def get_git_commit_hash():
 
 def setup_logging(args):
     log_level = getattr(logging, args.verbosity.upper())
+    #TODO polish logging, adding timestamps and making sure everything is logged propoerly
 
     '''
     if args.log_file is not None:
