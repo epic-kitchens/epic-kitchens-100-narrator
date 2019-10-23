@@ -17,7 +17,7 @@ from matplotlib.backends.backend_gtk3agg import (FigureCanvasGTK3Agg as FigureCa
 from recordings import ms_to_timestamp
 
 
-LOG = logging.getLogger('ui')
+LOG = logging.getLogger('epic_narrator.ui')
 
 
 class MainWindow(Gtk.ApplicationWindow):
