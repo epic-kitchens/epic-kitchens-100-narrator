@@ -13,9 +13,8 @@ class Recorder:
         self.mapping = [c - 1 for c in channels]  # Channel numbers start with 1
         self.q = queue.Queue()
         self.channels = channels
-        self.device_info = sd.query_devices(device_id, 'input')
+        self.device_info = dict()
         self.device_id = device_id
-        self.sample_rate = self.device_info['default_samplerate']
         self.downsample = downsample
         self.window = window
         self.length = int(self.window * self.sample_rate / (1000 * self.downsample))
@@ -24,6 +23,19 @@ class Recorder:
 
         self.stream = sd.InputStream(device=self.device_id, channels=max(self.channels),
                                      samplerate=self.sample_rate, callback=self.audio_callback)
+
+    @property
+    def device_id(self):
+        return self._device_id
+
+    @device_id.setter
+    def device_id(self, device_id):
+        self._device_id = device_id
+        self.device_info = sd.query_devices(device_id, 'input')
+
+    @property
+    def sample_rate(self):
+        return self.device_info['default_samplerate']
 
     def change_device(self, device_id):
         LOG.info("Changing recorder device to {}".format(device_id))
@@ -44,7 +56,7 @@ class Recorder:
         self.is_recording = True
         self.current_file = sf.SoundFile(filename, mode='w', samplerate=int(self.sample_rate),
                                          channels=len(self.channels))
-        
+
     def stop_recording(self):
         LOG.info("Stopping recording, saved to {}".format(self.current_file.name))
         self.is_recording = False
