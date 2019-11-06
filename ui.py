@@ -784,7 +784,6 @@ class NarrationsBox(Gtk.ListBox):
     def remove_all_narrations_boxes(self):
         for w in self.get_children():
             w.destroy()
-            self.remove(w)
 
     def scroll_to_rec(self, rec_time, box=None):
         if box is None:
