@@ -316,6 +316,9 @@ class Controller:
         if self.loaded_last_video:
             last_position = self.get_setting('last_video_position', 1)
             self.go_to(last_position, jumped=True)
+        else:
+            self.settings.update_settings(last_video_position=1)
+            self.go_to(1, jumped=True)
 
     def reload_current_video(self):
         LOG.info('Reloading current video')
