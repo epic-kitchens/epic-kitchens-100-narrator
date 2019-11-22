@@ -163,21 +163,21 @@ class MainWindow(Gtk.ApplicationWindow):
         self.left_box.pack_start(self.paths_box, False, False, 10)
 
         self.main_box.pack_start(self.left_box, False, True, 0)
-        self.right_box.set_size_request(narrations_box_size[0], narrations_box_size[1])
 
         if self.single_window:
+            self.right_box.set_size_request(narrations_box_size[0], narrations_box_size[1])
             self.right_box.pack_start(Gtk.Label(label='Recordings'), False, False, 10)
             self.main_box.pack_start(self.right_box, False, True, 0)
         else:
             self.narrations_window = Gtk.Window(title='Recordings')
-            self.narrations_window.set_size_request(narrations_box_size[0], narrations_box_size[1])
+            self.narrations_window.set_default_size(narrations_box_size[0], narrations_box_size[1])
             self.narrations_window.set_deletable(False)
             self.narrations_window.add(self.right_box)
 
             # enable only vertical resize
             gh = Gdk.Geometry()
-            gh.max_height = narrations_box_size[1]
-            gh.min_height = narrations_box_size[1] + 300
+            gh.max_height = narrations_box_size[1] + 300
+            gh.min_height = 300
             gh.max_width = narrations_box_size[0]
             gh.min_width = narrations_box_size[0]
             self.narrations_window.set_geometry_hints(None, gh, Gdk.WindowHints.MAX_SIZE)
