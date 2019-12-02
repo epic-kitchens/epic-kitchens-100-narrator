@@ -26,6 +26,22 @@ Alternatively, you can run it from the command line like this:
 
 ```flatpak run uk.ac.bris.epic.narrator```
 
+If installation fails with flatpak with an error like this
+
+```bash
+error: The application uk.ac.bris.epic.narrator/x86_64/master requires the runtime 
+org.gnome.Platform/x86_64/3.32 which was not found
+```
+
+Try to run the following 
+
+```bash
+flatpak install flathub org.gnome.Sdk//3.32
+flatpak install flathub org.gnome.Platform//3.32
+```
+
+and then again `flatpak install epic_narrator.flatpak`
+
 ### Conda
 
 If you don't want to use flatpak, use conda with the provided environment to 
