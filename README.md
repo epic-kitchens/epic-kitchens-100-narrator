@@ -1,7 +1,10 @@
 # EPIC Narrator
 ![CircleCI](https://img.shields.io/circleci/build/github/epic-kitchens/epic-narrator?token=08e985d104b068445b517634e60209f878175565)
 
-**EPIC-narrator** is a tool written in Python to annotate actions in videos via narration. 
+**EPIC-narrator** is a tool written in Python to annotate actions in videos via narration. This narrator was used in the EPIC-KITCHENS-100 dataset. If you use this narrator, please kindly consider referencing the following:
+```
+ref
+```
 
 # Installation
 
