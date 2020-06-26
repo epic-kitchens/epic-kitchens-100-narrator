@@ -3,7 +3,16 @@
 
 **EPIC-narrator** is a tool written in Python to annotate actions in videos via narration. This narrator was used in the EPIC-KITCHENS-100 dataset. If you use this narrator, please kindly consider referencing the following:
 ```
-ref
+@ARTICLE{Damen2020RESCALING,
+   title={Rescaling Egocentric Vision},
+   author={Damen, Dima and Doughty, Hazel and Farinella, Giovanni Maria  and and Furnari, Antonino 
+           and Ma, Jian and Kazakos, Evangelos and Moltisanti, Davide and Munro, Jonathan 
+           and Perrett, Toby and Price, Will and Wray, Michael},
+           journal   = {CoRR},
+           volume    = {abs/2006.13256},
+           year      = {2020},
+           ee        = {http://arxiv.org/abs/2006.13256},
+} 
 ```
 
 # Installation
