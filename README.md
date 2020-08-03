@@ -48,6 +48,7 @@ org.gnome.Platform/x86_64/3.32 which was not found
 Try to run the following 
 
 ```bash
+flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 flatpak install flathub org.gnome.Sdk//3.32
 flatpak install flathub org.gnome.Platform//3.32
 ```
