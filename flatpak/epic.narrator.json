@@ -1,7 +1,7 @@
 {
     "app-id": "uk.ac.bris.epic.narrator",
     "runtime": "org.gnome.Platform",
-    "runtime-version": "3.32",
+    "runtime-version": "3.36",
     "sdk": "org.gnome.Sdk",
     "command": "uk.ac.bris.epic.narrator.sh",
     "modules": [        
