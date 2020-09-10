@@ -1,5 +1,5 @@
 # EPIC Narrator
-![CircleCI](https://img.shields.io/circleci/build/github/epic-kitchens/epic-narrator?token=08e985d104b068445b517634e60209f878175565)
+[![CircleCI](https://img.shields.io/circleci/build/github/epic-kitchens/epic-kitchens-100-narrator?token=08e985d104b068445b517634e60209f878175565)](https://app.circleci.com/pipelines/github/epic-kitchens/epic-kitchens-100-narrator)
 
 **EPIC-narrator** is a tool written in Python to annotate actions in videos via narration. This narrator was used in the EPIC-KITCHENS-100 dataset. If you use this narrator, please kindly consider referencing the following:
 ```
@@ -42,15 +42,15 @@ If installation fails with flatpak with an error like this
 
 ```bash
 error: The application uk.ac.bris.epic.narrator/x86_64/master requires the runtime 
-org.gnome.Platform/x86_64/3.32 which was not found
+org.gnome.Platform/x86_64/3.36 which was not found
 ```
 
 Try to run the following 
 
 ```bash
 flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-flatpak install flathub org.gnome.Sdk//3.32
-flatpak install flathub org.gnome.Platform//3.32
+flatpak install flathub org.gnome.Sdk//3.36
+flatpak install flathub org.gnome.Platform//3.36
 ```
 
 and then again `flatpak install epic_narrator.flatpak`

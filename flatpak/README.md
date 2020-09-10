@@ -6,8 +6,8 @@ on your system (using apt, yum, dnf or whatever your distribution uses)
 You will then need to install GTK's SDK:
 
 ```bash
-$ flatpak install flathub org.gnome.Sdk//3.32
-$ flatpak install flathub org.gnome.Platform//3.32
+$ flatpak install flathub org.gnome.Sdk//3.36
+$ flatpak install flathub org.gnome.Platform//3.36
 ```
 
 Then `cd` into this directory, keeping the folder structure untouched, and run
