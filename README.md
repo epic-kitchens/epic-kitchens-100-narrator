@@ -14,6 +14,15 @@
            ee        = {http://arxiv.org/abs/2006.13256},
 } 
 ```
+# References and a little history
+
+For the [first version of EPIC-KITCHENS](https://epic-kitchens.github.io/2020-55.html) we used a live-commentary approach (people narrating actions without pausing the video) to annotate the untrimmed videos. The timestamps served as an initial ground to collect action boundaries and object boxes.
+
+As we collected the dataset, we wondered if the rough single timestamps could be used to supervise action recognition models. We showed this is possible in our [CVPR 19 paper](https://openaccess.thecvf.com/content_CVPR_2019/html/Moltisanti_Action_Recognition_From_Single_Timestamp_Supervision_in_Untrimmed_Videos_CVPR_2019_paper.html) - [(project webpage)](https://dimadamen.github.io/single_timestamps/).  
+
+While working on the paper we realised we were missing many actions in the videos. This was because annotators did not pause the videos while they were speaking, and as a result they were naturally not able to narrate actions that were happening as they spoke. Moreover, the timestamps were often not well aligned with the videos.
+
+For the [EPIC-KITCHENS extension](https://epic-kitchens.github.io/2020-100) we wanted to fix these issues, i.e. we wanted dense and precise temporal single timestamps. The EPIC Narrator was thus born! Our tool dramatically increased annotation density and precision. You can find more about the benefits of using the narrator [in our arXiv paper](https://arxiv.org/abs/2006.13256). 
 
 # Installation
 
